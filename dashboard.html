@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>מתחילים יחד — לוח בקרה</title>
+<link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<style>
+.col-add-btn{display:block;width:calc(100% - 28px);margin:0 14px 14px;padding:10px;font-family:'Heebo',sans-serif;font-size:.85rem;font-weight:700;border:none;border-radius:var(--rs);cursor:pointer;transition:background .2s;color:#fff}
+.add-chat-student-row{display:flex;align-items:center;justify-content:space-between;padding:8px 12px;border:1px solid var(--border);border-radius:var(--rs);margin-bottom:8px;background:#fff}
+</style>
+</head>
+<body>
+
+<header class="site-header">
+  <div class="sh-left">
+    <a href="index.html" class="sh-logo">מתחילים <span>יחד</span></a>
+    <div class="sh-header-user">
+      <div class="sh-avatar" id="sh-avatar"></div>
+      <div class="sh-user-info">
+        <div class="sh-user-name" id="sh-name"></div>
+        <div class="sh-user-detail">
+          <span id="sh-role"></span>
+          <span class="student-count-badge" id="student-badge"></span>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="sh-right">
+    <nav class="sh-nav">
+      <a href="dashboard.html" class="active">ראשי</a>
+      <a href="chats.html">צ'אטים</a>
+      <a href="faq.html">שאלות נפוצות</a>
+      <a href="messages.html">הודעות מערכת</a>
+    </nav>
+    <button class="notif-btn" title="התראות">🔔<span class="notif-dot"></span></button>
+    <button class="logout-btn" onclick="logout()">יציאה</button>
+  </div>
+</header>
+
+<div class="dash-body">
+
+  <!-- COL 1 RIGHT: Chats -->
+  <div class="dash-col">
+    <a href="chats.html" class="col-head">צ'אטים עם סטודנטים <span class="col-head-arrow">↗</span></a>
+    <div class="search-wrap" style="padding:10px 14px 8px">
+      <input class="search-input" id="chat-search" placeholder="חיפוש לפי שם..." oninput="filterChats(this.value)">
+      <span class="search-icon">🔍</span>
+    </div>
+    <div class="col-body" id="chats-list"></div>
+  </div>
+
+  <!-- COL 2 MIDDLE: FAQ -->
+  <div class="dash-col">
+    <a href="faq.html" class="col-head">שאלות נפוצות <span class="col-head-arrow">↗</span></a>
+    <div class="search-wrap" style="padding:10px 14px 6px">
+      <input class="search-input" id="faq-search" placeholder="חיפוש בשאלות..." oninput="filterFaqs(this.value)">
+      <span class="search-icon">🔍</span>
+    </div>
+    <div class="col-body" id="faq-list"></div>
+    <button class="col-add-btn" style="background:var(--purple)" onclick="openFaqModal()">+ הוספת שאלה נפוצה</button>
+  </div>
+
+  <!-- COL 3 LEFT: Announcements -->
+  <div class="dash-col">
+    <a href="messages.html" class="col-head">הודעות מערכת <span class="col-head-arrow">↗</span></a>
+    <div class="search-wrap" style="padding:10px 14px 6px">
+      <input class="search-input" id="ann-search" placeholder="חיפוש בהודעות..." oninput="filterAnns(this.value)">
+      <span class="search-icon">🔍</span>
+    </div>
+    <div class="col-body" id="ann-list"></div>
+    <button class="col-add-btn" style="background:var(--blue)" onclick="openAnnModal()">+ יצירת הודעה חדשה</button>
+  </div>
+
+</div>
+
+<!-- Chat Modal -->
+<div class="overlay hidden" id="m-chat">
+  <div class="modal chat-modal">
+    <div class="modal-hd">
+      <div class="modal-title" id="m-chat-name">שיחה</div>
+      <button class="modal-x" onclick="closeModal('m-chat')">✕</button>
+    </div>
+    <div class="modal-bd">
+      <div class="chat-msgs" id="chat-msgs"></div>
+      <div class="chat-input-row">
+        <textarea id="chat-in" placeholder="הקלידו הודעה..." rows="1"
+          onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendMsg()}"></textarea>
+        <button class="btn-send" onclick="sendMsg()">שליחה ↑</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- FAQ Modal -->
+<div class="overlay hidden" id="m-faq">
+  <div class="modal">
+    <div class="modal-hd">
+      <div class="modal-title" id="m-faq-title">הוספת שאלה נפוצה</div>
+      <button class="modal-x" onclick="closeModal('m-faq')">✕</button>
+    </div>
+    <div class="modal-bd">
+      <div class="mfg"><label>השאלה</label><input type="text" id="faq-q" placeholder="לדוגמה: כיצד ניצור קשר עם המנטור?"></div>
+      <div class="mfg"><label>התשובה</label><textarea id="faq-a" placeholder="כתבו את התשובה כאן..."></textarea></div>
+    </div>
+    <div class="modal-ft">
+      <button class="btn-cancel" onclick="closeModal('m-faq')">ביטול</button>
+      <button class="btn-save" onclick="saveFaq()">שמירה</button>
+    </div>
+  </div>
+</div>
+
+<!-- Announcement Modal (create + edit) -->
+<div class="overlay hidden" id="m-ann">
+  <div class="modal">
+    <div class="modal-hd">
+      <div class="modal-title" id="m-ann-title">יצירת הודעה חדשה</div>
+      <button class="modal-x" onclick="closeModal('m-ann')">✕</button>
+    </div>
+    <div class="modal-bd">
+      <div class="mfg" id="ann-student-fg">
+        <label>סטודנט</label>
+        <select id="ann-student" style="width:100%;padding:9px 13px;border:1.5px solid var(--border);border-radius:var(--rs);font-family:'Heebo',sans-serif;font-size:.88rem;direction:rtl;outline:none;color:var(--text)"></select>
+      </div>
+      <div class="mfg" id="ann-title-fg"><label>כותרת</label><input type="text" id="ann-title-input" placeholder="לדוגמה: עדכון לגבי הגשה"></div>
+      <div class="mfg"><label>תוכן ההודעה</label><textarea id="ann-b" placeholder="כתבו את ההודעה כאן..."></textarea></div>
+    </div>
+    <div class="modal-ft">
+      <button class="btn-cancel" onclick="closeModal('m-ann')">ביטול</button>
+      <button class="btn-save" onclick="saveAnn()">פרסום</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="db.js"></script>
+<script src="app.js"></script>
+<script>
+'use strict';
+const U = requireMentor();
+if(U) populateHeader();
+
+// Student count badge (inline in header)
+if(U){
+  const cnt=getMentorStudentCount();
+  document.getElementById('student-badge').textContent=`👥 ${cnt} סטודנטים`;
+}
+
+let allChats = getData('chats');
+let allFaqs  = getData('faqs');
+let allAnns  = getData('anns');
+let openChatId = null;
+let editFaqId  = null;
+let editAnnId  = null;
+
+/* ── CHATS ── */
+function filterChats(q){
+  const f=q.trim().toLowerCase();
+  renderChats(f?allChats.filter(c=>c.name.toLowerCase().includes(f)||c.preview.toLowerCase().includes(f)):allChats);
+}
+
+function renderChats(items){
+  const el=document.getElementById('chats-list');
+  if(!items.length){el.innerHTML='<div class="no-results">לא נמצאו סטודנטים</div>';return;}
+  el.innerHTML=items.slice(0,5).map(c=>{
+    const ov=c.hoursAgo>=24;
+    return`<div class="chat-item" onclick="openChat(${c.id})">
+      <div class="chat-top">
+        <div class="avatar" style="background:${c.color}">
+          ${x(c.initials)}${c.online?'<span class="avatar-online"></span>':''}
+        </div>
+        <div class="chat-info">
+          <div class="chat-name">${x(c.name)}</div>
+          <div class="chat-preview">${x(c.preview)}</div>
+        </div>
+        <span class="chat-time ${ov?'overdue':'ok'}">${fmtTime(c.hoursAgo)}</span>
+      </div>
+      <button class="btn-chat" onclick="event.stopPropagation();openChat(${c.id})">💬 פתיחת צ׳אט</button>
+    </div>`;
+  }).join('');
+}
+
+/* ── FAQS ── */
+function renderFaqs(items){
+  const el=document.getElementById('faq-list');
+  if(!items.length){el.innerHTML='<div class="no-results">לא נמצאו שאלות</div>';return;}
+  el.innerHTML=items.map(f=>`
+    <div class="faq-item">
+      <div class="faq-hd">
+        <div class="faq-q">${x(f.q)}</div>
+        <div class="faq-icons">
+          <button class="ibtn" onclick="openFaqModal(${f.id})" title="עריכה">✏️</button>
+          <button class="ibtn del" onclick="delFaq(${f.id})" title="מחיקה">🗑️</button>
+        </div>
+      </div>
+      <div class="faq-a">${x(f.a)}</div>
+    </div>`).join('');
+}
+function filterFaqs(q){
+  const f=q.trim().toLowerCase();
+  renderFaqs(f?allFaqs.filter(i=>i.q.toLowerCase().includes(f)||i.a.toLowerCase().includes(f)):allFaqs);
+}
+function openFaqModal(id=null){
+  editFaqId=id;
+  document.getElementById('m-faq-title').textContent=id?'עריכת שאלה':'הוספת שאלה נפוצה';
+  const f=id?allFaqs.find(i=>i.id===id):null;
+  document.getElementById('faq-q').value=f?f.q:'';
+  document.getElementById('faq-a').value=f?f.a:'';
+  openModal('m-faq');
+  setTimeout(()=>document.getElementById('faq-q').focus(),100);
+}
+function saveFaq(){
+  const q=document.getElementById('faq-q').value.trim();
+  const a=document.getElementById('faq-a').value.trim();
+  if(!q||!a){toast('אנא מלאו שאלה ותשובה','err');return;}
+  if(editFaqId){
+    const f=allFaqs.find(i=>i.id===editFaqId);
+    f.q=q;f.a=a;
+    toast('השאלה עודכנה ✓','ok');
+  }else{
+    allFaqs.unshift({id:Date.now(),q,a});   // unshift → appears at top of list
+    toast('השאלה נוספה ✓','ok');
+  }
+  setData('faqs',allFaqs);
+  closeModal('m-faq');
+  renderFaqs(allFaqs);
+}
+function delFaq(id){
+  if(!confirm('למחוק שאלה זו?'))return;
+  allFaqs=allFaqs.filter(f=>f.id!==id);
+  setData('faqs',allFaqs);
+  renderFaqs(allFaqs);
+  toast('השאלה נמחקה','');
+}
+
+/* ── ANNOUNCEMENTS ── */
+function renderAnns(items){
+  const el=document.getElementById('ann-list');
+  if(!items.length){el.innerHTML='<div class="no-results">אין הודעות עדיין</div>';return;}
+  el.innerHTML=items.slice(0,4).map(a=>`
+    <div class="ann-card">
+      <div class="ann-title">${x(a.studentName||a.title||'הודעה')}</div>
+      <div class="ann-body">${x(a.body)}</div>
+      <div class="ann-foot">
+        <span class="ann-views">👁 ${a.views||0} צפיות</span>
+        <span>${x(a.date)}</span>
+      </div>
+      <div class="ann-actions">
+        <button class="ibtn" onclick="openAnnModal(${a.id})" title="עריכה">✏️ עריכה</button>
+        <button class="ibtn del" onclick="delAnn(${a.id})" title="מחיקה">🗑️ מחיקה</button>
+      </div>
+    </div>`).join('');
+}
+function filterAnns(q){
+  const f=q.trim().toLowerCase();
+  renderAnns(f?allAnns.filter(a=>(a.studentName||a.title||'').toLowerCase().includes(f)||a.body.toLowerCase().includes(f)):allAnns);
+}
+function openAnnModal(id=null){
+  editAnnId=id;
+  const studentFg=document.getElementById('ann-student-fg');
+  const titleFg=document.getElementById('ann-title-fg');
+  if(id){
+    const a=allAnns.find(i=>i.id===id);
+    document.getElementById('m-ann-title').textContent='עריכת הודעה';
+    studentFg.style.display='none';
+    titleFg.style.display='none';
+    document.getElementById('ann-b').value=a?a.body:'';
+  }else{
+    document.getElementById('m-ann-title').textContent='יצירת הודעה חדשה';
+    studentFg.style.display='block';
+    titleFg.style.display='block';
+    const sel=document.getElementById('ann-student');
+    const students=DB_STUDENTS.filter(s=>s.prog===U.prog);
+    sel.innerHTML=students.map(s=>`<option value="${s.id}" data-name="${s.n}">${x(s.n)}</option>`).join('');
+    document.getElementById('ann-title-input').value='';
+    document.getElementById('ann-b').value='';
+  }
+  openModal('m-ann');
+  setTimeout(()=>document.getElementById(id?'ann-b':'ann-title-input').focus(),100);
+}
+function saveAnn(){
+  const b=document.getElementById('ann-b').value.trim();
+  if(!b){toast('אנא כתבו תוכן להודעה','err');return;}
+  if(editAnnId){
+    const a=allAnns.find(i=>i.id===editAnnId);
+    if(a)a.body=b;
+    toast('ההודעה עודכנה ✓','ok');
+  }else{
+    const titleInput=document.getElementById('ann-title-input');
+    const title=(titleInput&&titleInput.value.trim())||'הודעה חדשה';
+    const sel=document.getElementById('ann-student');
+    const studentId=parseInt(sel.value);
+    const studentName=sel.options[sel.selectedIndex].getAttribute('data-name');
+    const d=new Date().toLocaleDateString('he-IL',{day:'numeric',month:'long',year:'numeric'});
+    allAnns.unshift({id:Date.now(),studentId,studentName,title,body:b,date:d,views:0,viewedBy:[]});
+    toast('ההודעה פורסמה ✓','ok');
+  }
+  setData('anns',allAnns);
+  closeModal('m-ann');
+  renderAnns(allAnns);
+}
+function delAnn(id){
+  if(!confirm('למחוק הודעה זו?'))return;
+  allAnns=allAnns.filter(a=>a.id!==id);
+  setData('anns',allAnns);
+  renderAnns(allAnns);
+  toast('ההודעה נמחקה','');
+}
+
+/* ── CHAT MODAL ── */
+function openChat(id){
+  openChatId=id;
+  const c=allChats.find(i=>i.id===id);
+  document.getElementById('m-chat-name').textContent=`שיחה עם ${c.name}`;
+  renderMsgs(c);
+  openModal('m-chat');
+  c.hoursAgo=0;
+  setData('chats',allChats);
+  renderChats(allChats);
+}
+function renderMsgs(c){
+  const el=document.getElementById('chat-msgs');
+  el.innerHTML=(c.msgs||[]).map(m=>`
+    <div>
+      <div class="bubble ${m.sent?'sent':'recv'}">${x(m.t)}</div>
+      <div class="btime ${m.sent?'sent':'recv'}">${m.time}</div>
+    </div>`).join('');
+  el.scrollTop=el.scrollHeight;
+}
+function sendMsg(){
+  const inp=document.getElementById('chat-in');
+  const txt=inp.value.trim();
+  if(!txt)return;
+  const c=allChats.find(i=>i.id===openChatId);
+  const now=new Date();
+  const t=`${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+  c.msgs.push({t:txt,sent:true,time:t});
+  c.preview=txt;
+  inp.value='';
+  setData('chats',allChats);
+  renderMsgs(c);
+  renderChats(allChats);
+}
+
+renderChats(allChats);
+renderFaqs(allFaqs);
+renderAnns(allAnns);
+</script>
+</body>
+</html>

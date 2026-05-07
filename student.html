@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>מתחילים יחד — לוח סטודנט</title>
+<link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<style>
+.ann-card-collapsed{cursor:pointer;transition:box-shadow .15s}
+.ann-card-collapsed:hover{box-shadow:0 2px 10px rgba(0,0,0,.1)}
+.ann-reveal-hint{color:var(--teal);font-size:.8rem;font-weight:700}
+.ann-card-revealed{cursor:default}
+</style>
+</head>
+<body>
+
+<header class="site-header">
+  <div class="sh-left">
+    <a href="index.html" class="sh-logo">מתחילים <span>יחד</span></a>
+    <div class="sh-header-user">
+      <div class="sh-avatar" id="sh-avatar"></div>
+      <div class="sh-user-info">
+        <div class="sh-user-name" id="sh-name"></div>
+        <div class="sh-user-detail"><span id="sh-role"></span></div>
+      </div>
+    </div>
+  </div>
+  <div class="sh-right">
+    <button class="logout-btn" onclick="logout()">יציאה</button>
+  </div>
+</header>
+
+<div class="dash-body">
+
+  <!-- COL 1 RIGHT: Chat with mentor -->
+  <div class="dash-col">
+    <div class="col-head" style="cursor:default;pointer-events:none">💬 שיחה עם החונך/ת שלי</div>
+    <div class="col-body" id="chats-list"></div>
+  </div>
+
+  <!-- COL 2 MIDDLE: FAQ (read-only) -->
+  <div class="dash-col">
+    <div class="col-head" style="cursor:default;pointer-events:none">❓ שאלות נפוצות</div>
+    <div class="search-wrap" style="padding:10px 14px 6px">
+      <input class="search-input" id="faq-search" placeholder="חיפוש בשאלות..." oninput="filterFaqs(this.value)">
+      <span class="search-icon">🔍</span>
+    </div>
+    <div class="col-body" id="faq-list"></div>
+  </div>
+
+  <!-- COL 3 LEFT: Announcements — title only until clicked -->
+  <div class="dash-col">
+    <div class="col-head" style="cursor:default;pointer-events:none">📢 הודעות מערכת</div>
+    <div class="search-wrap" style="padding:10px 14px 6px">
+      <input class="search-input" id="ann-search" placeholder="חיפוש בהודעות..." oninput="filterAnns(this.value)">
+      <span class="search-icon">🔍</span>
+    </div>
+    <div class="col-body" id="ann-list"></div>
+  </div>
+
+</div>
+
+<!-- Chat Modal -->
+<div class="overlay hidden" id="m-chat">
+  <div class="modal chat-modal">
+    <div class="modal-hd">
+      <div>
+        <div class="modal-title" id="m-chat-name">שיחה עם החונך</div>
+        <div id="m-chat-meta" style="font-size:.72rem;color:var(--muted)"></div>
+      </div>
+      <button class="modal-x" onclick="closeModal('m-chat')">✕</button>
+    </div>
+    <div class="modal-bd">
+      <div class="chat-msgs" id="chat-msgs"></div>
+      <div class="chat-input-row">
+        <textarea id="chat-in" placeholder="כתבו הודעה לחונך/ת..." rows="1"
+          onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendMsg()}"></textarea>
+        <button class="btn-send" onclick="sendMsg()">שליחה ↑</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="db.js"></script>
+<script src="app.js"></script>
+<script>
+'use strict';
+const U = requireStudent();
+if(!U) throw new Error('no user');
+populateHeader();
+
+const mentor   = getMentorObj();
+const allChats = getData('chats');
+const allFaqs  = getData('faqs');
+let   allAnns  = getData('anns');
+
+/* ── MENTOR CHAT (single entry) ── */
+function renderChats(){
+  const el=document.getElementById('chats-list');
+  if(!mentor){el.innerHTML='<div class="no-results">לא נמצא חונך/ת עבורך</div>';return;}
+  const c=allChats[0];
+  if(!c){el.innerHTML='<div class="no-results">אין שיחות</div>';return;}
+  el.innerHTML=`
+    <div style="text-align:center;padding:12px 0 8px">
+      <div class="avatar" style="background:${c.color};width:56px;height:56px;font-size:1.1rem;margin:0 auto 8px">
+        ${x(c.initials)}<span class="avatar-online"></span>
+      </div>
+      <div style="font-weight:700;font-size:1rem">${x(c.name)}</div>
+      <div style="font-size:.78rem;color:var(--muted);margin-top:2px">${x(mentor.prog||'')} · שנה ${mentor.yr||''}</div>
+    </div>
+    <div class="chat-item" onclick="openChat()" style="margin-top:8px">
+      <div class="chat-preview" style="font-size:.85rem;margin-bottom:8px">${x(c.preview)}</div>
+      <button class="btn-chat">💬 פתיחת שיחה</button>
+    </div>`;
+}
+
+/* ── FAQS read-only ── */
+function renderFaqs(items){
+  const el=document.getElementById('faq-list');
+  if(!items||!items.length){el.innerHTML='<div class="no-results">אין שאלות נפוצות עדיין</div>';return;}
+  el.innerHTML=items.map(f=>`
+    <div class="faq-item">
+      <div class="faq-q" style="font-weight:700;font-size:.88rem;margin-bottom:6px">${x(f.q)}</div>
+      <div class="faq-a">${x(f.a)}</div>
+    </div>`).join('');
+}
+function filterFaqs(q){
+  const f=q.trim().toLowerCase();
+  renderFaqs(f?allFaqs.filter(i=>i.q.toLowerCase().includes(f)||i.a.toLowerCase().includes(f)):allFaqs);
+}
+
+/* ── ANNOUNCEMENTS: title only → click to reveal + view count ── */
+function _myAnns(){
+  return allAnns.filter(a=>!a.studentId||a.studentId===U.id);
+}
+
+function renderAnns(items){
+  const el=document.getElementById('ann-list');
+  if(!items||!items.length){el.innerHTML='<div class="no-results">אין הודעות עדיין</div>';return;}
+  el.innerHTML=items.map(a=>`
+    <div class="ann-card ann-card-collapsed" id="ann-${a.id}" onclick="expandAnn(${a.id})">
+      <div class="ann-title">${x(a.title||a.studentName||'הודעה חדשה')}</div>
+      <div id="ann-body-${a.id}" class="ann-body" style="display:none;margin-top:8px">${x(a.body)}</div>
+      <div class="ann-foot" style="margin-top:6px">
+        <span class="ann-reveal-hint" id="ann-hint-${a.id}">לחץ לקריאה ›</span>
+        <span>${x(a.date)}</span>
+      </div>
+    </div>`).join('');
+}
+
+function expandAnn(id){
+  const bodyEl = document.getElementById(`ann-body-${id}`);
+  const hint   = document.getElementById(`ann-hint-${id}`);
+  const card   = document.getElementById(`ann-${id}`);
+  if(!bodyEl || bodyEl.style.display!=='none') return; // already open
+
+  bodyEl.style.display = 'block';
+  if(hint)  hint.style.display  = 'none';
+  if(card){ card.classList.remove('ann-card-collapsed');
+            card.classList.add('ann-card-revealed');
+            card.onclick = null; }
+
+  // Increment view count once per student
+  const ann = allAnns.find(a=>a.id===id);
+  if(!ann) return;
+  if(!ann.viewedBy) ann.viewedBy = [];
+  if(!ann.viewedBy.includes(U.id)){
+    ann.viewedBy.push(U.id);
+    ann.views = (ann.views||0) + 1;
+    setData('anns', allAnns);
+  }
+}
+
+function filterAnns(q){
+  const f = q.trim().toLowerCase();
+  const base = _myAnns();
+  renderAnns(f ? base.filter(a=>(a.studentName||'').toLowerCase().includes(f)||a.body.toLowerCase().includes(f)) : base);
+}
+
+/* ── CHAT MODAL ── */
+function openChat(){
+  const c=allChats[0];
+  if(!c)return;
+  document.getElementById('m-chat-name').textContent=`שיחה עם ${c.name}`;
+  document.getElementById('m-chat-meta').textContent=`${mentor?mentor.prog:''} · שנה ${mentor?mentor.yr:''}`;
+  renderMsgs(c);
+  openModal('m-chat');
+}
+function renderMsgs(c){
+  const el=document.getElementById('chat-msgs');
+  el.innerHTML=(c.msgs||[]).map(m=>`
+    <div>
+      <div class="bubble ${m.sent?'sent':'recv'}">${x(m.t)}</div>
+      <div class="btime ${m.sent?'sent':'recv'}">${m.time}</div>
+    </div>`).join('');
+  el.scrollTop=el.scrollHeight;
+}
+function sendMsg(){
+  const inp=document.getElementById('chat-in');
+  const txt=inp.value.trim();
+  if(!txt)return;
+  const c=allChats[0];
+  if(!c)return;
+  const now=new Date();
+  const t=`${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+  c.msgs.push({t:txt,sent:true,time:t});
+  c.preview=txt;
+  inp.value='';
+  setData('chats',allChats);
+  renderMsgs(c);
+}
+
+renderChats();
+renderFaqs(allFaqs);
+renderAnns(_myAnns());
+</script>
+</body>
+</html>

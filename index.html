@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>מתחילים יחד — פלטפורמת מנטורינג</title>
+<link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{--teal:#3EA9A3;--teal-d:#2E9089;--grad:linear-gradient(140deg,#5BBFB8 0%,#4498BC 60%,#3A85AF 100%);--purple:#7C3AED;--bg:#EEF2FF;--text:#111827;--muted:#9ca3af;--border:#e5e7eb}
+body{font-family:'Heebo',system-ui,sans-serif;direction:rtl;background:var(--bg);color:var(--text);line-height:1.6}
+
+.w-nav{background:var(--grad);padding:0 5%;display:flex;align-items:center;justify-content:space-between;height:64px;position:sticky;top:0;z-index:100;box-shadow:0 2px 8px rgba(0,0,0,.12)}
+.w-logo{color:#fff;font-size:1.4rem;font-weight:800;letter-spacing:-.5px}
+.w-logo span{color:#a7f3d0}
+.w-nav-btn{color:#fff;background:rgba(255,255,255,.12);border:1.5px solid rgba(255,255,255,.4);font-family:'Heebo',sans-serif;font-size:.9rem;font-weight:600;padding:8px 22px;border-radius:50px;cursor:pointer;transition:all .2s;text-decoration:none;display:inline-block}
+.w-nav-btn:hover{background:rgba(255,255,255,.25);border-color:#fff}
+
+.w-hero{background:var(--grad);color:#fff;text-align:center;padding:90px 5% 70px}
+.w-badge{display:inline-block;background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.3);padding:6px 18px;border-radius:50px;font-size:.82rem;margin-bottom:22px}
+.w-hero h1{font-size:clamp(2rem,5vw,3.4rem);font-weight:800;line-height:1.2;margin-bottom:18px}
+.w-hero h1 span{color:#a7f3d0}
+.w-hero p{font-size:1.1rem;opacity:.85;max-width:520px;margin:0 auto 36px;font-weight:300}
+.hero-btns{display:flex;gap:14px;justify-content:center;flex-wrap:wrap}
+.btn-cta{display:inline-block;background:#fff;color:var(--teal);font-family:'Heebo',sans-serif;font-size:1rem;font-weight:700;padding:13px 36px;border-radius:50px;border:none;cursor:pointer;box-shadow:0 8px 24px rgba(0,0,0,.18);transition:transform .2s,box-shadow .2s;text-decoration:none}
+.btn-cta:hover{transform:translateY(-2px);box-shadow:0 12px 32px rgba(0,0,0,.24)}
+.btn-ghost{display:inline-block;color:#fff;font-family:'Heebo',sans-serif;font-size:1rem;font-weight:600;padding:13px 28px;border-radius:50px;border:2px solid rgba(255,255,255,.45);cursor:pointer;background:transparent;transition:all .2s;text-decoration:none}
+.btn-ghost:hover{background:rgba(255,255,255,.12);border-color:#fff}
+.w-stats{display:flex;justify-content:center;gap:48px;margin-top:54px;padding-top:36px;border-top:1px solid rgba(255,255,255,.2);flex-wrap:wrap}
+.stat-num{font-size:2rem;font-weight:800}
+.stat-lbl{font-size:.82rem;opacity:.7}
+
+.w-features{padding:72px 5%;background:#fff}
+.sec-title{text-align:center;font-size:1.85rem;font-weight:800;margin-bottom:44px}
+.sec-title span{color:var(--teal)}
+.feat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:22px;max-width:1050px;margin:0 auto}
+.feat-card{background:var(--bg);border-radius:12px;padding:30px 26px;text-align:center;transition:transform .2s,box-shadow .2s}
+.feat-card:hover{transform:translateY(-4px);box-shadow:0 4px 12px rgba(0,0,0,.1)}
+.feat-icon{width:56px;height:56px;border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:1.5rem;margin:0 auto 14px}
+.feat-card h3{font-size:1.05rem;font-weight:700;margin-bottom:8px}
+.feat-card p{font-size:.88rem;color:var(--muted);line-height:1.7}
+
+.w-how{padding:72px 5%;background:var(--bg)}
+.steps{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:24px;max-width:900px;margin:0 auto}
+.step{text-align:center}
+.step-num{width:48px;height:48px;border-radius:50%;background:var(--teal);color:#fff;font-size:1.2rem;font-weight:800;display:flex;align-items:center;justify-content:center;margin:0 auto 12px}
+.step h3{font-size:.97rem;font-weight:700;margin-bottom:6px}
+.step p{font-size:.84rem;color:var(--muted);line-height:1.6}
+
+.w-cta{background:var(--grad);color:#fff;text-align:center;padding:72px 5%}
+.w-cta h2{font-size:1.9rem;font-weight:800;margin-bottom:14px}
+.w-cta p{opacity:.82;margin-bottom:30px;font-size:1rem}
+
+.w-footer{background:#111827;color:rgba(255,255,255,.45);text-align:center;padding:22px;font-size:.82rem}
+.w-footer span{color:var(--teal)}
+
+@media(max-width:600px){
+  .w-hero h1{font-size:1.75rem}
+  .w-stats{gap:28px}
+  .w-nav{padding:0 16px}
+}
+</style>
+</head>
+<body>
+<nav class="w-nav">
+  <div class="w-logo">מתחילים <span>יחד</span></div>
+  <a href="login.html" class="w-nav-btn">כניסה למערכת</a>
+</nav>
+
+<section class="w-hero">
+  <div class="w-badge">🎓 פלטפורמת מנטורינג לסטודנטים</div>
+  <h1>ליווי אישי.<br><span>התקדמות משותפת.</span></h1>
+  <p>מתחילים יחד היא פלטפורמה המחברת בין סטודנטים ותיקים לחדשים — לתמיכה, הכוונה ושיתוף ידע לאורך כל הדרך.</p>
+  <div class="hero-btns">
+    <a href="login.html" class="btn-cta">מתחילים עכשיו ←</a>
+  </div>
+  <div class="w-stats">
+    <div><div class="stat-num">500</div><div class="stat-lbl">סטודנטים רשומים</div></div>
+    <div><div class="stat-num">10</div><div class="stat-lbl">חונכים פעילים</div></div>
+    <div><div class="stat-num">98%</div><div class="stat-lbl">שביעות רצון</div></div>
+  </div>
+</section>
+
+<section class="w-features">
+  <h2 class="sec-title">כל מה שצריכים <span>במקום אחד</span></h2>
+  <div class="feat-grid">
+    <div class="feat-card">
+      <div class="feat-icon" style="background:#cffafe">💬</div>
+      <h3>צ'אטים עם מנטוריים</h3>
+      <p>שיחות ישירות בזמן אמת. התראות אוטומטיות כשעוברות 24 שעות ללא מענה — כדי שאף סטודנט לא יישאר לבד.</p>
+    </div>
+    <div class="feat-card">
+      <div class="feat-icon" style="background:#eff6ff">📢</div>
+      <h3>הודעות לכלל הקבוצה</h3>
+      <p>פרסמו עדכונים חשובים לכל המנטוריים בלחיצה אחת ועקבו מי קרא את ההודעות שלכם.</p>
+    </div>
+    <div class="feat-card">
+      <div class="feat-icon" style="background:#fdf4ff">❓</div>
+      <h3>שאלות נפוצות</h3>
+      <p>צרו ועדכנו בסיס ידע עם תשובות לשאלות הנפוצות ביותר — חסכו זמן לכולם.</p>
+    </div>
+  </div>
+</section>
+
+<section class="w-how">
+  <h2 class="sec-title">איך <span>זה עובד?</span></h2>
+  <div class="steps">
+    <div class="step">
+      <div class="step-num">1</div>
+      <h3>נכנסים למערכת</h3>
+      <p>כל סטודנט נרשם מקבל פרטי כניסה אישיים לפלטפורמה.</p>
+    </div>
+    <div class="step">
+      <div class="step-num">2</div>
+      <h3>מתחברים למנטור</h3>
+      <p>מתחברים למנטור שמלווה אותכם לאורך המסע האקדמי.</p>
+    </div>
+    <div class="step">
+      <div class="step-num">3</div>
+      <h3>לומדים ומתפתחים</h3>
+      <p>מקבלים מענה, מידע עדכני, ותמיכה בכל שלב.</p>
+    </div>
+    <div class="step">
+      <div class="step-num">4</div>
+      <h3>מחזירים לקהילה</h3>
+      <p>בשנה הבאה — אתם כבר המנטורים. הידע עובר הלאה.</p>
+    </div>
+  </div>
+</section>
+
+<section class="w-cta">
+  <h2>מוכנים להתחיל?</h2>
+  <p>הצטרפו למאות סטודנטים שכבר משתמשים במערכת</p>
+  <a href="login.html" class="btn-cta">כניסה למערכת</a>
+</section>
+
+<footer class="w-footer">© <span id="yr"></span> <span>מתחילים יחד</span> — אפקה, המכללה האקדמית להנדסה בתל-אביב</footer>
+<script>document.getElementById('yr').textContent=new Date().getFullYear();</script>
+</body>
+</html>

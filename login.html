@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>מתחילים יחד — כניסה</title>
+<link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{--teal:#2BA69A;--teal-d:#1e8a80;--purple:#7C3AED;--border:#e5e7eb;--text:#111827;--mid:#374151;--muted:#9ca3af;--red:#ef4444}
+body{font-family:'Heebo',system-ui,sans-serif;direction:rtl;min-height:100vh;background:linear-gradient(140deg,#5BBFB8 0%,#4498BC 60%,#3A85AF 100%);display:flex;align-items:center;justify-content:center;padding:20px}
+
+.card{background:#fff;border-radius:20px;padding:46px 38px;width:100%;max-width:400px;box-shadow:0 20px 60px rgba(0,0,0,.2)}
+.logo{font-size:1.5rem;font-weight:800;color:var(--teal);text-align:center;margin-bottom:4px}
+.logo span{color:var(--purple)}
+.sub{color:var(--muted);font-size:.85rem;text-align:center;margin-bottom:28px}
+.title{font-size:1.4rem;font-weight:700;text-align:center;margin-bottom:4px}
+.greet{font-size:.84rem;color:var(--muted);text-align:center;margin-bottom:24px}
+
+.fg{margin-bottom:14px}
+.fg label{display:block;font-size:.8rem;font-weight:600;color:var(--mid);margin-bottom:5px}
+.fg input{width:100%;padding:11px 14px;border:1.5px solid var(--border);border-radius:8px;font-family:'Heebo',sans-serif;font-size:.92rem;direction:rtl;outline:none;color:var(--text);transition:border-color .2s}
+.fg input:focus{border-color:var(--teal)}
+
+.err-msg{background:#fee2e2;color:var(--red);font-size:.82rem;padding:8px 12px;border-radius:8px;margin-bottom:12px;display:none}
+.err-msg.show{display:block}
+
+.btn-login{width:100%;padding:13px;background:var(--teal);color:#fff;border:none;border-radius:8px;font-family:'Heebo',sans-serif;font-size:.98rem;font-weight:700;cursor:pointer;margin-top:6px;transition:background .2s,transform .1s}
+.btn-login:hover{background:var(--teal-d);transform:translateY(-1px)}
+.btn-login:active{transform:translateY(0)}
+.btn-login:disabled{opacity:.6;cursor:not-allowed;transform:none}
+
+.hint{font-size:.76rem;color:var(--muted);margin-top:14px;background:#f9fafb;padding:10px 12px;border-radius:8px;line-height:1.85;text-align:right}
+.hint strong{color:var(--mid)}
+
+.back{margin-top:18px;font-size:.84rem;color:var(--muted);text-align:center}
+.back a{color:var(--teal);text-decoration:none;font-weight:600}
+.back a:hover{text-decoration:underline}
+
+.spinner{display:none;width:18px;height:18px;border:2.5px solid rgba(255,255,255,.4);border-top-color:#fff;border-radius:50%;animation:spin .6s linear infinite;margin:0 auto}
+@keyframes spin{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="logo">מתחילים <span>יחד</span></div>
+  <div class="sub">פלטפורמת מנטורינג | אפקה</div>
+  <div class="title">כניסה למערכת</div>
+  <div class="greet">ברוכים השבים 👋</div>
+
+  <div class="err-msg" id="err">שם משתמש או סיסמה שגויים</div>
+
+  <div class="fg">
+    <label>כתובת דוא"ל</label>
+    <input type="email" id="em" placeholder="your.name@afeka.ac.il" autocomplete="email">
+  </div>
+  <div class="fg">
+    <label>סיסמה</label>
+    <input type="password" id="pw" placeholder="••••••••" autocomplete="current-password"
+      onkeydown="if(event.key==='Enter')doLogin()">
+  </div>
+
+  <button class="btn-login" id="login-btn" onclick="doLogin()">
+    <span id="btn-text">כניסה</span>
+    <div class="spinner" id="spin"></div>
+  </button>
+
+  <div class="hint">
+    <strong>דוגמה — חונך/ת:</strong><br>
+    <code>hadar.itzhaki@afeka.ac.il</code> / <code>Hi318852!</code><br>
+    <strong>דוגמה — סטודנט/ית:</strong><br>
+    <code>ali.gabay001@afeka.ac.il</code> / <code>AG300839!</code>
+  </div>
+
+  <div class="back"><a href="index.html">← חזרה לדף הבית</a></div>
+</div>
+
+<script src="db.js"></script>
+<script>
+'use strict';
+// If already logged in go straight to dashboard
+if(localStorage.getItem('currentUser')){window.location.href='dashboard.html';}
+
+function doLogin(){
+  const em=document.getElementById('em').value.trim().toLowerCase();
+  const pw=document.getElementById('pw').value.trim();
+  const errEl=document.getElementById('err');
+  errEl.classList.remove('show');
+
+  if(!em||!pw){errEl.textContent='אנא מלאו את כל השדות';errEl.classList.add('show');return;}
+
+  // show spinner
+  const btn=document.getElementById('login-btn');
+  btn.disabled=true;
+  document.getElementById('btn-text').style.display='none';
+  document.getElementById('spin').style.display='block';
+
+  setTimeout(()=>{
+    // Check mentors first, then students
+    let user=DB_MENTORS.find(u=>u.e.toLowerCase()===em && u.p===pw);
+    if(user){
+      localStorage.setItem('currentUser',JSON.stringify(user));
+      window.location.href='dashboard.html';
+      return;
+    }
+    user=DB_STUDENTS.find(u=>u.e.toLowerCase()===em && u.p===pw);
+    if(user){
+      localStorage.setItem('currentUser',JSON.stringify(user));
+      window.location.href='student.html';
+      return;
+    }
+    {
+      errEl.textContent='שם משתמש או סיסמה שגויים';
+      errEl.classList.add('show');
+      btn.disabled=false;
+      document.getElementById('btn-text').style.display='';
+      document.getElementById('spin').style.display='none';
+      document.getElementById('pw').value='';
+      document.getElementById('pw').focus();
+    }
+  },500);
+}
+</script>
+</body>
+</html>

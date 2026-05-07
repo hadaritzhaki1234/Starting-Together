@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>מתחילים יחד — צ'אטים</title>
+<link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<style>
+.chats-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:16px}
+.chat-full-item{background:#fff;border-radius:12px;border:1px solid var(--border);padding:16px;transition:box-shadow .2s;cursor:pointer}
+.chat-full-item:hover{box-shadow:0 4px 12px rgba(0,0,0,.1)}
+.chat-meta{display:flex;gap:8px;margin-top:8px;flex-wrap:wrap}
+.badge{font-size:.72rem;padding:3px 8px;border-radius:50px;font-weight:600}
+.badge-prog{background:#eff6ff;color:#2563eb}
+.badge-yr{background:#f0fdf4;color:#15803d}
+.badge-overdue{background:#fee2e2;color:#dc2626}
+.badge-ok{background:#f0fdf4;color:#15803d}
+.unread-bar{height:3px;border-radius:2px;margin-top:10px}
+.unread-bar.overdue{background:var(--red)}
+.unread-bar.ok{background:var(--cyan)}
+</style>
+</head>
+<body>
+
+<header class="site-header">
+  <div class="sh-left">
+    <a href="index.html" class="sh-logo">מתחילים <span>יחד</span></a>
+    <div class="sh-user-info">
+      <div class="sh-user-name" id="sh-name"></div>
+      <div class="sh-user-detail"><span id="sh-role"></span></div>
+    </div>
+  </div>
+  <div class="sh-right">
+    <nav class="sh-nav">
+      <a href="dashboard.html">ראשי</a>
+      <a href="chats.html" class="active">צ'אטים</a>
+      <a href="faq.html">שאלות נפוצות</a>
+      <a href="messages.html">הודעות מערכת</a>
+    </nav>
+    <button class="notif-btn" title="התראות">🔔<span class="notif-dot"></span></button>
+    <button class="logout-btn" onclick="logout()">יציאה</button>
+  </div>
+</header>
+
+<div class="full-page">
+  <div class="page-title">
+    💬 צ'אטים עם סטודנטים
+    <a href="dashboard.html">← חזרה ללוח הבקרה</a>
+  </div>
+
+  <div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap">
+    <select id="filter-lang" style="padding:8px 14px;border:1.5px solid var(--border);border-radius:50px;font-family:'Heebo',sans-serif;font-size:.84rem;direction:rtl;outline:none;background:#fff;color:var(--mid);cursor:pointer;transition:border-color .2s" onchange="applyFilters()">
+      <option value="">כל השפות</option>
+      <option value="ערבית">דוברי ערבית</option>
+      <option value="עברית">דוברי עברית</option>
+    </select>
+    <select id="filter-ld" style="padding:8px 14px;border:1.5px solid var(--border);border-radius:50px;font-family:'Heebo',sans-serif;font-size:.84rem;direction:rtl;outline:none;background:#fff;color:var(--mid);cursor:pointer;transition:border-color .2s" onchange="applyFilters()">
+      <option value="">כל הסטודנטים</option>
+      <option value="כן">עם לקויות למידה</option>
+      <option value="לא">ללא לקויות</option>
+    </select>
+  </div>
+  <div class="full-search-wrap">
+    <input class="full-search" id="chat-search" placeholder="חיפוש לפי שם סטודנט או תוכן הודעה..." oninput="applyFilters()">
+    <span class="full-search-icon">🔍</span>
+  </div>
+
+  <div id="chat-count" style="font-size:.82rem;color:var(--muted);margin-bottom:16px"></div>
+  <div class="chats-grid" id="chats-grid"></div>
+</div>
+
+<!-- Chat Modal -->
+<div class="overlay hidden" id="m-chat">
+  <div class="modal chat-modal">
+    <div class="modal-hd">
+      <div style="display:flex;align-items:center;gap:10px">
+        <div class="avatar" id="m-chat-avatar" style="width:34px;height:34px;font-size:.75rem;flex-shrink:0"></div>
+        <div>
+          <div class="modal-title" id="m-chat-name">שיחה</div>
+          <div id="m-chat-meta" style="font-size:.72rem;color:var(--muted)"></div>
+        </div>
+      </div>
+      <button class="modal-x" onclick="closeModal('m-chat')">✕</button>
+    </div>
+    <div class="modal-bd">
+      <div class="chat-msgs" id="chat-msgs"></div>
+      <div class="chat-input-row">
+        <textarea id="chat-in" placeholder="הקלידו הודעה..." rows="1"
+          onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendMsg()}"></textarea>
+        <button class="btn-send" onclick="sendMsg()">שליחה ↑</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="db.js"></script>
+<script src="app.js"></script>
+<script>
+'use strict';
+const U = requireMentor();
+if(U) populateHeader();
+
+let chats = getData('chats');
+let openChatId = null;
+
+function applyFilters(){
+  const lang=(document.getElementById('filter-lang').value||'');
+  const ld=(document.getElementById('filter-ld').value||'');
+  const q=(document.getElementById('chat-search').value||'').trim().toLowerCase();
+  let items=chats;
+  if(lang)items=items.filter(c=>c.lang===lang);
+  if(ld)items=items.filter(c=>c.ld===ld);
+  if(q)items=items.filter(c=>c.name.toLowerCase().includes(q)||c.preview.toLowerCase().includes(q));
+  renderChats(items);
+}
+
+function renderChats(items){
+  const grid=document.getElementById('chats-grid');
+  const cnt=document.getElementById('chat-count');
+  const overdueCount=items.filter(c=>c.hoursAgo>=24).length;
+  cnt.innerHTML=`מציג ${items.length} שיחות${overdueCount?` · <span style="color:var(--red);font-weight:700">${overdueCount} ממתינות למענה מעל 24 שעות</span>`:''}`;
+
+  if(!items.length){grid.innerHTML='<div class="no-results" style="grid-column:1/-1">לא נמצאו שיחות תואמות</div>';return;}
+
+  grid.innerHTML=items.map(c=>{
+    const ov=c.hoursAgo>=24;
+    const timeLabel=fmtTime(c.hoursAgo);
+    const ldBadge=c.ld==='כן'?'<span class="badge" style="background:#fef9c3;color:#92400e">לקויות למידה</span>':'';
+    const langBadge=c.lang&&c.lang!=='עברית'?`<span class="badge badge-prog">${x(c.lang)}</span>`:'';
+    return`<div class="chat-full-item" onclick="openChat(${c.id})">
+      <div class="chat-top">
+        <div class="avatar" style="background:${c.color};width:44px;height:44px;font-size:.88rem">
+          ${x(c.initials)}${c.online?'<span class="avatar-online"></span>':''}
+        </div>
+        <div class="chat-info">
+          <div class="chat-name" style="font-size:.95rem">${x(c.name)}</div>
+          <div class="chat-preview">${x(c.preview)}</div>
+        </div>
+        <span class="chat-time ${ov?'overdue':'ok'}" style="font-size:.78rem">${timeLabel}</span>
+      </div>
+      <div class="chat-meta">
+        <span class="badge badge-prog">${x(c.prog||'')}</span>
+        <span class="badge badge-yr">שנה ${c.yr||1}</span>
+        ${langBadge}${ldBadge}
+      </div>
+      <div class="unread-bar ${ov?'overdue':'ok'}"></div>
+      <div style="margin-top:10px">
+        <button class="btn-chat" onclick="event.stopPropagation();openChat(${c.id})">
+          💬 פתיחת צ׳אט
+        </button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+
+function openChat(id){
+  openChatId=id;
+  const c=chats.find(i=>i.id===id);
+
+  // avatar in modal header
+  const av=document.getElementById('m-chat-avatar');
+  av.style.background=c.color;
+  av.textContent=c.initials;
+
+  document.getElementById('m-chat-name').textContent=c.name;
+  document.getElementById('m-chat-meta').textContent=`${c.prog||''} · שנה ${c.yr||1} · ${c.online?'● מחובר':'○ לא מחובר'}`;
+
+  renderMsgs(c);
+  openModal('m-chat');
+  // reset overdue
+  c.hoursAgo=0;
+  setData('chats',chats);
+  renderChats(chats);
+  setTimeout(()=>document.getElementById('chat-in').focus(),200);
+}
+
+function renderMsgs(c){
+  const el=document.getElementById('chat-msgs');
+  el.innerHTML=(c.msgs||[]).map(m=>`
+    <div>
+      <div class="bubble ${m.sent?'sent':'recv'}">${x(m.t)}</div>
+      <div class="btime ${m.sent?'sent':'recv'}">${m.time}</div>
+    </div>`).join('');
+  el.scrollTop=el.scrollHeight;
+}
+
+function sendMsg(){
+  const inp=document.getElementById('chat-in');
+  const txt=inp.value.trim();
+  if(!txt)return;
+  const c=chats.find(i=>i.id===openChatId);
+  const now=new Date();
+  const t=`${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+  c.msgs.push({t:txt,sent:true,time:t});
+  c.preview=txt;
+  inp.value='';
+  setData('chats',chats);
+  renderMsgs(c);
+  renderChats(chats);
+}
+
+renderChats(chats);
+</script>
+</body>
+</html>
