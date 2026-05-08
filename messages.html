@@ -56,11 +56,7 @@
       <button class="modal-x" onclick="closeModal('m-ann')">✕</button>
     </div>
     <div class="modal-bd">
-      <div class="mfg" id="student-fg">
-        <label>סטודנט</label>
-        <select id="ann-student" style="width:100%;padding:9px 13px;border:1.5px solid var(--border);border-radius:var(--rs);font-family:'Heebo',sans-serif;font-size:.88rem;direction:rtl;outline:none;color:var(--text)"></select>
-      </div>
-      <div class="mfg" id="title-fg"><label>כותרת</label><input type="text" id="ann-title-input" placeholder="לדוגמה: עדכון לגבי הגשה"></div>
+      <div class="mfg"><label>כותרת</label><input type="text" id="ann-title-input" placeholder="לדוגמה: עדכון לגבי הגשה"></div>
       <div class="mfg"><label>תוכן ההודעה</label><textarea id="ann-b" placeholder="כתבו את ההודעה כאן..."></textarea></div>
     </div>
     <div class="modal-ft">
@@ -87,7 +83,7 @@ function renderAnns(items){
   if(!items.length){el.innerHTML='<div class="no-results">לא נמצאו הודעות</div>';return;}
   el.innerHTML=items.map(a=>`
     <div class="ann-card" id="ann-${a.id}">
-      <div class="ann-title">${x(a.studentName||a.title||'הודעה')}</div>
+      <div class="ann-title">${x(a.title||'הודעה')}</div>
       <div class="ann-body">${x(a.body)}</div>
       <div class="ann-foot">
         <span class="ann-views">👁 ${a.views||0} צפיות</span>
@@ -102,51 +98,30 @@ function renderAnns(items){
 
 function filterAnns(q){
   const f=q.trim().toLowerCase();
-  renderAnns(f?anns.filter(a=>(a.studentName||a.title||'').toLowerCase().includes(f)||a.body.toLowerCase().includes(f)):anns);
-}
-
-function _populateStudentSel(selectedId){
-  const sel=document.getElementById('ann-student');
-  const students=DB_STUDENTS.filter(s=>s.prog===U.prog);
-  sel.innerHTML=students.map(s=>`<option value="${s.id}" data-name="${s.n}"${s.id===selectedId?' selected':''}>${x(s.n)}</option>`).join('');
+  renderAnns(f?anns.filter(a=>(a.title||'').toLowerCase().includes(f)||a.body.toLowerCase().includes(f)):anns);
 }
 
 function openAnnModal(id=null){
   editId=id;
   document.getElementById('m-ann-title').textContent=id?'עריכת הודעה':'יצירת הודעה חדשה';
-  const sfg=document.getElementById('student-fg');
-  const tfg=document.getElementById('title-fg');
   const a=id?anns.find(i=>i.id===id):null;
-  if(id){
-    if(sfg)sfg.style.display='none';
-    if(tfg)tfg.style.display='none';
-    document.getElementById('ann-b').value=a?a.body:'';
-  }else{
-    if(sfg)sfg.style.display='block';
-    if(tfg)tfg.style.display='block';
-    _populateStudentSel(null);
-    document.getElementById('ann-title-input').value='';
-    document.getElementById('ann-b').value='';
-  }
+  document.getElementById('ann-title-input').value=a?a.title:'';
+  document.getElementById('ann-b').value=a?a.body:'';
   openModal('m-ann');
-  setTimeout(()=>document.getElementById(id?'ann-b':'ann-title-input').focus(),100);
+  setTimeout(()=>document.getElementById('ann-title-input').focus(),100);
 }
 
 function saveAnn(){
+  const title=document.getElementById('ann-title-input').value.trim()||'הודעה חדשה';
   const b=document.getElementById('ann-b').value.trim();
   if(!b){toast('אנא כתבו תוכן להודעה','err');return;}
   if(editId){
     const a=anns.find(i=>i.id===editId);
-    if(a)a.body=b;
+    if(a){a.title=title;a.body=b;}
     toast('ההודעה עודכנה ✓','ok');
   }else{
-    const sel=document.getElementById('ann-student');
-    const studentId=parseInt(sel.value);
-    const studentName=sel.options[sel.selectedIndex].getAttribute('data-name');
-    const titleEl=document.getElementById('ann-title-input');
-    const title=(titleEl&&titleEl.value.trim())||'הודעה חדשה';
     const d=new Date().toLocaleDateString('he-IL',{day:'numeric',month:'long',year:'numeric'});
-    anns.unshift({id:Date.now(),studentId,studentName,title,body:b,date:d,views:0,viewedBy:[]});
+    anns.unshift({id:Date.now(),title,body:b,date:d,views:0,viewedBy:[],_v:ANNS_V});
     toast('ההודעה פורסמה ✓','ok');
   }
   setData('anns',anns);

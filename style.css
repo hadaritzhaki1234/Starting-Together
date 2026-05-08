@@ -34,7 +34,11 @@ body{font-family:'Heebo',system-ui,sans-serif;direction:rtl;background:var(--bg)
 .logout-btn{background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.3);color:#fff;font-family:'Heebo',sans-serif;font-size:.78rem;padding:5px 12px;border-radius:50px;cursor:pointer;transition:background .2s}
 .logout-btn:hover{background:rgba(255,255,255,.26)}
 .notif-btn{background:none;border:none;cursor:pointer;position:relative;padding:4px;color:#fff;font-size:1.2rem;line-height:1}
-.notif-dot{position:absolute;top:2px;left:2px;width:8px;height:8px;background:#f59e0b;border-radius:50%;border:2px solid var(--teal)}
+.notif-dot{position:absolute;top:2px;left:2px;width:8px;height:8px;background:#f59e0b;border-radius:50%;border:2px solid var(--teal);display:none}
+.notif-dot.active{display:block}
+.unread-badge{display:inline-flex;align-items:center;justify-content:center;min-width:20px;height:20px;padding:0 5px;border-radius:50px;background:var(--red);color:#fff;font-size:.65rem;font-weight:800;line-height:1;flex-shrink:0}
+.chat-new-dot{width:9px;height:9px;border-radius:50%;background:var(--red);flex-shrink:0;animation:newdot 1.4s ease-in-out infinite}
+@keyframes newdot{0%,100%{transform:scale(1);opacity:1}50%{transform:scale(1.35);opacity:.7}}
 .student-count-badge{display:inline-flex;align-items:center;gap:3px;background:rgba(255,255,255,.22);color:#fff;font-size:.68rem;padding:1px 7px;border-radius:50px;font-weight:700;flex-shrink:0}
 
 /* ── SEARCH ── */

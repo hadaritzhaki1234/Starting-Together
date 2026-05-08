@@ -71,44 +71,32 @@ const FAQ_DEFAULTS=[
   {id:3,q:'מה שעות הפתיחה של הספרייה?',a:'הספרייה פתוחה ראשון-חמישי: 8:00-22:00, שישי: 8:00-14:00. סגורה בשבת וחגים.'},
   {id:4,q:'איך מגישים בקשה למלגה?',a:'בקשות למלגות זמינות בפורטל הסטודנטים. המועד האחרון הוא בסוף כל סמסטר.'},
   {id:5,q:'מה שעות הפתיחה של משרדי הממונה?',a:'משרדי הממונה פתוחים ראשון-חמישי, 10:00-14:00. ניתן לקבוע תור מראש בפורטל.'},
+  {id:6,q:'מה משך כל שיעור בפועל ואיך מתנהלות ההפסקות?',a:'השיעורים במערכת כתובים כשעות עגולות (למשל 8:00–9:00) אך בפועל כל שיעור נמשך 50 דקות ואחריו 10 דקות הפסקה. אין הפסקה מיוחדת לארוחת צהריים — יש לנצל את 10 דקות ההפסקה או שעות חלון. בשיעורים של יותר משעה ברצף, ניתן לנסות לסכם עם המרצה שירצה רצוף ויעשה הפסקה ארוכה יותר בשעת הצהריים.'},
+  {id:7,q:'מה עושים בדקאנט הסטודנטים ומי אחראי על מה?',a:'בדקאנט הסטודנטים מטופלים כל מקרי הפרט: מילואים — סיוון, לינדה ודניאל; התאמות בבחינות, אבחונים ונגישות — אנה, שירלי וספיר. שימו לב: אבחונים ישנים מתקבלים למכינה בלבד — לתואר נדרש אבחון עדכני. מגבלת נגישות? פנו לדקאנט לפני תחילת הלימודים. חונכויות ושיעורי עזר בתשלום סמלי — רשימה במודל תחת קורס הדקאנט (מודל ← כלים לסטודנט ← דקאנט). אוכלוסיות מיוחדות (חברה ערבית, עולים) מטופלות גם הן בדקאנט, ולחברה הערבית קיימת קבוצה עם חונכת דוברת ערבית.'},
+  {id:8,q:'מה מציעה יחידת אופק לסטודנטים?',a:'מרכז החדשנות והיזמות — סדנאות, האקתונים ושעות ייעוץ. מעורבות חברתית — "רובוט בא לכיתה", פרויקטים עם משרד המדע, קרן רוטרי, אייסף ואימפקט. מרכז לקידום למידה — ניהול זמן, מתמטיקה, פיזיקה, אנגלית (כולל שיפור מבטא) והכנה לעולם העסקי. מועדוני סטודנטים — רובוטיקה, רכב, מהנדסים ללא גבולות, Pro-Woman ועוד. נבחרות ספורט ותוכניות חילופי סטודנטים בחו"ל. ביום רביעי בזמן אפקה (13:00 ללימודי יום, 18:40–19:10 ללימודי ערב) מתקיים יריד אופק.'},
+  {id:9,q:'מה תפקיד ההכוון האקדמי ואיך הוא יכול לעזור?',a:'ההכוון האקדמי מטפל בכל הנושאים המנהלתיים: רישום לקורסים, ציונים וערעורים, אישורי לימודים, ריכוזי ציונים, רישום מחודש לקורס, הקפאה/חידוש לימודים. בנוסף, מסייע בבניית מערכת השעות לאורך התואר וייעוץ כיצד כדאי לסדר את הלימודים.'},
+  {id:10,q:'איפה אפשר לאכול ולשתות במכללה?',a:'קפיטריות במתחם הפיקוס ובבניין הקריה. מכונות שתיה ממותקת, שתיה חמה וחטיפים בבניין המפ"ט ובמתחם עתידים. בכל מבנה לשירות הסטודנטים יש מקררים לקופסאות אוכל ומיקרוגלים לחימום. מפוזרים קולרים וברי מים (חמים וקרים) בכל הקמפוס — מומלץ להצטייד בבקבוק/כוס אישיים.'},
+  {id:11,q:'איפה קונים ציוד משרדי במכללה?',a:'במתחם הפיקוס, צמוד לקפיטריה, ישנה חנות כלי כתיבה וציוד משרדי המופעלת על ידי אגודת הסטודנטים. המחירים מותאמים לסטודנטים — כמעט במחירי עלות.'},
+  {id:12,q:'מה זה "זמני אפקה" ומתי הם מתקיימים?',a:'בכל יום רביעי בשעה 13:00 יש שעת חלון משותפת לכלל הסטודנטים — "זמני אפקה". שעה זו משמשת למכללה ולאגודת הסטודנטים לפעילויות העשרה, הרצאות שאינן קשורות ללימודים, אירועים מיוחדים, ובילוי. כדאי לעקוב אחר הפרסומים של המכללה ושל האגודה.'},
 ];
 
 function _getAnnDefaults(){
-  const u=getUser();
-  if(!u)return[];
-  // Generate defaults based on the mentor's program (works for both mentor and student)
-  const prog=u.prog;
-  const students=DB_STUDENTS.filter(s=>s.prog===prog).slice(0,3);
-  const titles=['עדכון לקראת הסמסטר','הגשות השבוע — חשוב!','כל הכבוד על ההתקדמות 💪'];
-  const bodies=[
-    'שלום, רציתי לוודא שאתה/את מסתדר/ת עם החומר לקראת הסמסטר. אשמח לדבר בכל שאלה.',
-    'יש מועדי הגשה קרובים השבוע — אנא בדוק/י את לוח הזמנים בפורטל הסטודנטים.',
-    'ראיתי את ציוני הביניים שלך ורציתי לעודד. אתה/את בדרך הנכונה! המשך/י כך!',
+  return[
+    {id:1,title:'מועדי בחינות אמצע פורסמו',body:'לוח מועדי הבחינות האמצע לכל הקורסים פורסם. אנא בדקו בפורטל הסטודנטים את מועדי הבחינות והמיקומים הספציפיים שלכם.',date:'5 דצמבר 2025',views:0,viewedBy:[]},
+    {id:2,title:'מפגשי למידה קבוצתיים השבוע',body:'הצטרפו אלינו למפגשי למידה משותפים בספרייה כל ערב בין השעות 18:00-20:00. כל הסטודנטים מוזמנים!',date:'4 דצמבר 2025',views:0,viewedBy:[]},
+    {id:3,title:'סדנת קריירה: בניית קורות חיים',body:'למדו כיצד ליצור קורות חיים מרשימים. הסדנה מתוכננת ליום שני הבא בשעה 15:00 בחדר 204.',date:'3 דצמבר 2025',views:0,viewedBy:[]},
+    {id:4,title:'תזכורת: שעות קבלה שבועיות',body:'שעות הקבלה שלי הן בכל יום שלישי בין 14:00-16:00. ניתן לקבוע תור מראש. אשמח לראות אתכם!',date:'2 דצמבר 2025',views:0,viewedBy:[]},
+    {id:5,title:'ברוכים הבאים לסמסטר! 🎉',body:'שלום לכולם! אנחנו שמחים לקבל אתכם לסמסטר החדש. אנא קראו את כל המידע החשוב בלוח הבקרה ואל תהססו לפנות אלינו בכל שאלה.',date:'1 דצמבר 2025',views:0,viewedBy:[]},
   ];
-  const dates=['5 דצמבר 2025','4 דצמבר 2025','3 דצמבר 2025'];
-  const result=students.map((s,i)=>({
-    id:i+1,studentId:s.id,studentName:s.n,
-    title:titles[i]||titles[0],
-    body:bodies[i]||bodies[0],date:dates[i]||dates[0],
-    views:0,viewedBy:[],
-  }));
-  // If the current user is a student not covered by the first 3 defaults, add one for them
-  if(!u.isMentor && !result.find(a=>a.studentId===u.id)){
-    result.push({
-      id:result.length+1,studentId:u.id,studentName:u.n,
-      title:'ברוכ/ה הבאה לסמסטר החדש',
-      body:'שלום! אשמח לעזור בכל שאלה ולתמוך לאורך הדרך 😊',
-      date:'1 דצמבר 2025',views:0,viewedBy:[],
-    });
-  }
-  return result;
 }
 
 function _storageKey(key){
   const email=getMentorEmail();
   return email?`mty_${key}_${email}`:`mty_${key}`;
 }
-const CHATS_V=4; // bump to force-rebuild stale cached chats
+const CHATS_V=6; // bump to force-rebuild stale cached chats
+const ANNS_V=3;  // bump when ann data model changes
+const FAQS_V=2;  // bump when FAQ_DEFAULTS list grows
 
 function getData(key){
   try{
@@ -116,15 +104,16 @@ function getData(key){
     if(raw){
       const d=JSON.parse(raw);
       if(d&&d.length){
-        // Force-rebuild chats when version changed
         if(key==='chats'&&d[0]._v!==CHATS_V)throw new Error('stale');
+        if(key==='anns'&&(d[0]._v||0)<ANNS_V)throw new Error('stale');
+        if(key==='faqs'&&(d[0]._v||0)<FAQS_V)throw new Error('stale');
         return d;
       }
     }
   }catch(e){}
   if(key==='chats')return buildChats();
-  if(key==='anns')return _getAnnDefaults();
-  if(key==='faqs')return JSON.parse(JSON.stringify(FAQ_DEFAULTS));
+  if(key==='anns'){const a=_getAnnDefaults();a.forEach(i=>{i._v=ANNS_V;});return a;}
+  if(key==='faqs'){const f=JSON.parse(JSON.stringify(FAQ_DEFAULTS));f.forEach(i=>{i._v=FAQS_V;});return f;}
   return[];
 }
 function setData(key,val){localStorage.setItem(_storageKey(key),JSON.stringify(val));}
@@ -150,25 +139,15 @@ const CHAT_GAPS=[
 
 function buildChats(){
   const u=getUser();
-  if(!u)return[];
-  if(u.isMentor){
-    const myStudents=DB_STUDENTS.filter(s=>s.prog===u.prog).slice(0,20);
-    return myStudents.map((s,i)=>{
-      const prev=CHAT_PREVIEWS[i%CHAT_PREVIEWS.length];
-      return{_v:CHATS_V,id:s.id,name:s.n,initials:s.ini,color:s.color,
-        online:i%5===0,hoursAgo:CHAT_GAPS[i]||0,preview:prev,
-        prog:s.prog,yr:s.yr,lang:s.lang,ld:s.ld,
-        msgs:[{t:prev,sent:false,time:'10:30'}]};
-    });
-  }else{
-    const mentor=getMentorObj();
-    if(!mentor)return[];
-    const ini=mentor.n.split(' ').map(w=>w[0]).join('');
-    return[{_v:CHATS_V,id:9999,name:mentor.n,initials:ini,color:'#3EA9A3',
-      online:true,hoursAgo:0,preview:'שלום! אני חונך/ת שלך לסמסטר זה.',
-      prog:mentor.prog,yr:mentor.yr,isMentorChat:true,
-      msgs:[{t:'שלום! אני חונך/ת שלך לסמסטר זה. אשמח לעזור בכל שאלה 😊',sent:false,time:'09:00'}]}];
-  }
+  if(!u||!u.isMentor)return[]; // students never build chats — they read mentor's list
+  const myStudents=DB_STUDENTS.filter(s=>s.prog===u.prog).slice(0,20);
+  return myStudents.map((s,i)=>{
+    const prev=CHAT_PREVIEWS[i%CHAT_PREVIEWS.length];
+    return{_v:CHATS_V,id:s.id,name:s.n,initials:s.ini,color:s.color,
+      online:i%5===0,hoursAgo:CHAT_GAPS[i]||0,preview:prev,
+      prog:s.prog,yr:s.yr,lang:s.lang,ld:s.ld,
+      msgs:[{t:prev,sent:false,from:'student',time:'10:30'}]};
+  });
 }
 
 /* ══ HELPERS ══ */

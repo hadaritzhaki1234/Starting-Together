@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>מתחילים יחד — שאלות נפוצות</title>
+<link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header class="site-header">
+  <div class="sh-left">
+    <a href="index.html" class="sh-logo">מתחילים <span>יחד</span></a>
+    <div class="sh-header-user">
+      <div class="sh-avatar" id="sh-avatar"></div>
+      <div class="sh-user-info">
+        <div class="sh-user-name" id="sh-name"></div>
+        <div class="sh-user-detail"><span id="sh-role"></span></div>
+      </div>
+    </div>
+  </div>
+  <div class="sh-right">
+    <button class="logout-btn" onclick="logout()">יציאה</button>
+  </div>
+</header>
+
+<div class="full-page">
+  <div class="page-title">
+    ❓ שאלות נפוצות
+    <a href="student.html">← חזרה ללוח הבקרה</a>
+  </div>
+
+  <div class="full-search-wrap">
+    <input class="full-search" id="faq-search" placeholder="חיפוש בשאלות ותשובות..." oninput="filterFaqs(this.value)">
+    <span class="full-search-icon">🔍</span>
+  </div>
+
+  <div id="faq-count" style="font-size:.82rem;color:var(--muted);margin-bottom:12px"></div>
+  <div id="faq-list"></div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="db.js"></script>
+<script src="app.js"></script>
+<script>
+'use strict';
+const U = requireStudent();
+if(!U) throw new Error('no user');
+populateHeader();
+
+let faqs = getData('faqs');
+
+function renderFaqs(items){
+  const el=document.getElementById('faq-list');
+  const cnt=document.getElementById('faq-count');
+  cnt.textContent=`מציג ${items.length} מתוך ${faqs.length} שאלות`;
+  if(!items.length){el.innerHTML='<div class="no-results">לא נמצאו שאלות תואמות</div>';return;}
+  el.innerHTML=items.map(f=>`
+    <div class="faq-item">
+      <div class="faq-hd">
+        <div class="faq-q">${x(f.q)}</div>
+      </div>
+      <div class="faq-a">${x(f.a)}</div>
+    </div>`).join('');
+}
+
+function filterFaqs(q){
+  const f=q.trim().toLowerCase();
+  renderFaqs(f?faqs.filter(i=>i.q.toLowerCase().includes(f)||i.a.toLowerCase().includes(f)):faqs);
+}
+
+renderFaqs(faqs);
+</script>
+</body>
+</html>

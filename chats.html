@@ -131,6 +131,7 @@ function renderChats(items){
   grid.innerHTML=items.map(c=>{
     const ov=c.hoursAgo>=24;
     const timeLabel=fmtTime(c.hoursAgo);
+    const unrd=c.unread||0;
     const ldBadge=c.ld==='כן'?'<span class="badge" style="background:#fef9c3;color:#92400e">לקויות למידה</span>':'';
     const langBadge=c.lang&&c.lang!=='עברית'?`<span class="badge badge-prog">${x(c.lang)}</span>`:'';
     return`<div class="chat-full-item" onclick="openChat(${c.id})">
@@ -139,7 +140,9 @@ function renderChats(items){
           ${x(c.initials)}${c.online?'<span class="avatar-online"></span>':''}
         </div>
         <div class="chat-info">
-          <div class="chat-name" style="font-size:.95rem">${x(c.name)}</div>
+          <div class="chat-name" style="font-size:.95rem;display:flex;align-items:center;gap:6px">
+            ${x(c.name)}${unrd?`<span class="unread-badge">${unrd}</span>`:''}
+          </div>
           <div class="chat-preview">${x(c.preview)}</div>
         </div>
         <span class="chat-time ${ov?'overdue':'ok'}" style="font-size:.78rem">${timeLabel}</span>
@@ -160,6 +163,11 @@ function renderChats(items){
 }
 
 
+function _updateNotifDot(){
+  const dot=document.querySelector('.notif-dot');
+  if(!dot)return;
+  dot.classList.toggle('active',chats.some(c=>(c.unread||0)>0));
+}
 function openChat(id){
   openChatId=id;
   const c=chats.find(i=>i.id===id);
@@ -174,20 +182,22 @@ function openChat(id){
 
   renderMsgs(c);
   openModal('m-chat');
-  // reset overdue
   c.hoursAgo=0;
+  c.unread=0;          // mentor read the messages
   setData('chats',chats);
   renderChats(chats);
+  _updateNotifDot();
   setTimeout(()=>document.getElementById('chat-in').focus(),200);
 }
 
 function renderMsgs(c){
   const el=document.getElementById('chat-msgs');
-  el.innerHTML=(c.msgs||[]).map(m=>`
-    <div>
-      <div class="bubble ${m.sent?'sent':'recv'}">${x(m.t)}</div>
-      <div class="btime ${m.sent?'sent':'recv'}">${m.time}</div>
-    </div>`).join('');
+  el.innerHTML=(c.msgs||[]).map(m=>{
+    const cls=m.from?(m.from==='mentor'?'sent':'recv'):(m.sent?'sent':'recv');
+    return`<div>
+      <div class="bubble ${cls}">${x(m.t)}</div>
+      <div class="btime ${cls}">${m.time}</div>
+    </div>`;}).join('');
   el.scrollTop=el.scrollHeight;
 }
 
@@ -198,8 +208,9 @@ function sendMsg(){
   const c=chats.find(i=>i.id===openChatId);
   const now=new Date();
   const t=`${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
-  c.msgs.push({t:txt,sent:true,time:t});
+  c.msgs.push({t:txt,sent:true,from:'mentor',time:t});
   c.preview=txt;
+  c.mentorUnread=(c.mentorUnread||0)+1;  // notify student
   inp.value='';
   setData('chats',chats);
   renderMsgs(c);
@@ -207,6 +218,7 @@ function sendMsg(){
 }
 
 renderChats(chats);
+_updateNotifDot();
 </script>
 </body>
 </html>

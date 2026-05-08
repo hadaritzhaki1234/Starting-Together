@@ -119,11 +119,7 @@
       <button class="modal-x" onclick="closeModal('m-ann')">✕</button>
     </div>
     <div class="modal-bd">
-      <div class="mfg" id="ann-student-fg">
-        <label>סטודנט</label>
-        <select id="ann-student" style="width:100%;padding:9px 13px;border:1.5px solid var(--border);border-radius:var(--rs);font-family:'Heebo',sans-serif;font-size:.88rem;direction:rtl;outline:none;color:var(--text)"></select>
-      </div>
-      <div class="mfg" id="ann-title-fg"><label>כותרת</label><input type="text" id="ann-title-input" placeholder="לדוגמה: עדכון לגבי הגשה"></div>
+      <div class="mfg"><label>כותרת</label><input type="text" id="ann-title-input" placeholder="לדוגמה: עדכון לגבי הגשה"></div>
       <div class="mfg"><label>תוכן ההודעה</label><textarea id="ann-b" placeholder="כתבו את ההודעה כאן..."></textarea></div>
     </div>
     <div class="modal-ft">
@@ -166,13 +162,16 @@ function renderChats(items){
   if(!items.length){el.innerHTML='<div class="no-results">לא נמצאו סטודנטים</div>';return;}
   el.innerHTML=items.slice(0,5).map(c=>{
     const ov=c.hoursAgo>=24;
+    const unrd=c.unread||0;
     return`<div class="chat-item" onclick="openChat(${c.id})">
       <div class="chat-top">
         <div class="avatar" style="background:${c.color}">
           ${x(c.initials)}${c.online?'<span class="avatar-online"></span>':''}
         </div>
         <div class="chat-info">
-          <div class="chat-name">${x(c.name)}</div>
+          <div class="chat-name" style="display:flex;align-items:center;gap:6px">
+            ${x(c.name)}${unrd?`<span class="unread-badge">${unrd}</span>`:''}
+          </div>
           <div class="chat-preview">${x(c.preview)}</div>
         </div>
         <span class="chat-time ${ov?'overdue':'ok'}">${fmtTime(c.hoursAgo)}</span>
@@ -186,7 +185,7 @@ function renderChats(items){
 function renderFaqs(items){
   const el=document.getElementById('faq-list');
   if(!items.length){el.innerHTML='<div class="no-results">לא נמצאו שאלות</div>';return;}
-  el.innerHTML=items.map(f=>`
+  el.innerHTML=items.slice(0,5).map(f=>`
     <div class="faq-item">
       <div class="faq-hd">
         <div class="faq-q">${x(f.q)}</div>
@@ -241,7 +240,7 @@ function renderAnns(items){
   if(!items.length){el.innerHTML='<div class="no-results">אין הודעות עדיין</div>';return;}
   el.innerHTML=items.slice(0,4).map(a=>`
     <div class="ann-card">
-      <div class="ann-title">${x(a.studentName||a.title||'הודעה')}</div>
+      <div class="ann-title">${x(a.title||'הודעה')}</div>
       <div class="ann-body">${x(a.body)}</div>
       <div class="ann-foot">
         <span class="ann-views">👁 ${a.views||0} צפיות</span>
@@ -255,46 +254,28 @@ function renderAnns(items){
 }
 function filterAnns(q){
   const f=q.trim().toLowerCase();
-  renderAnns(f?allAnns.filter(a=>(a.studentName||a.title||'').toLowerCase().includes(f)||a.body.toLowerCase().includes(f)):allAnns);
+  renderAnns(f?allAnns.filter(a=>(a.title||'').toLowerCase().includes(f)||a.body.toLowerCase().includes(f)):allAnns);
 }
 function openAnnModal(id=null){
   editAnnId=id;
-  const studentFg=document.getElementById('ann-student-fg');
-  const titleFg=document.getElementById('ann-title-fg');
-  if(id){
-    const a=allAnns.find(i=>i.id===id);
-    document.getElementById('m-ann-title').textContent='עריכת הודעה';
-    studentFg.style.display='none';
-    titleFg.style.display='none';
-    document.getElementById('ann-b').value=a?a.body:'';
-  }else{
-    document.getElementById('m-ann-title').textContent='יצירת הודעה חדשה';
-    studentFg.style.display='block';
-    titleFg.style.display='block';
-    const sel=document.getElementById('ann-student');
-    const students=DB_STUDENTS.filter(s=>s.prog===U.prog);
-    sel.innerHTML=students.map(s=>`<option value="${s.id}" data-name="${s.n}">${x(s.n)}</option>`).join('');
-    document.getElementById('ann-title-input').value='';
-    document.getElementById('ann-b').value='';
-  }
+  document.getElementById('m-ann-title').textContent=id?'עריכת הודעה':'יצירת הודעה חדשה';
+  const a=id?allAnns.find(i=>i.id===id):null;
+  document.getElementById('ann-title-input').value=a?a.title:'';
+  document.getElementById('ann-b').value=a?a.body:'';
   openModal('m-ann');
-  setTimeout(()=>document.getElementById(id?'ann-b':'ann-title-input').focus(),100);
+  setTimeout(()=>document.getElementById('ann-title-input').focus(),100);
 }
 function saveAnn(){
+  const title=document.getElementById('ann-title-input').value.trim()||'הודעה חדשה';
   const b=document.getElementById('ann-b').value.trim();
   if(!b){toast('אנא כתבו תוכן להודעה','err');return;}
   if(editAnnId){
     const a=allAnns.find(i=>i.id===editAnnId);
-    if(a)a.body=b;
+    if(a){a.title=title;a.body=b;}
     toast('ההודעה עודכנה ✓','ok');
   }else{
-    const titleInput=document.getElementById('ann-title-input');
-    const title=(titleInput&&titleInput.value.trim())||'הודעה חדשה';
-    const sel=document.getElementById('ann-student');
-    const studentId=parseInt(sel.value);
-    const studentName=sel.options[sel.selectedIndex].getAttribute('data-name');
     const d=new Date().toLocaleDateString('he-IL',{day:'numeric',month:'long',year:'numeric'});
-    allAnns.unshift({id:Date.now(),studentId,studentName,title,body:b,date:d,views:0,viewedBy:[]});
+    allAnns.unshift({id:Date.now(),title,body:b,date:d,views:0,viewedBy:[],_v:ANNS_V});
     toast('ההודעה פורסמה ✓','ok');
   }
   setData('anns',allAnns);
@@ -310,6 +291,12 @@ function delAnn(id){
 }
 
 /* ── CHAT MODAL ── */
+function _updateNotifDot(){
+  const dot=document.querySelector('.notif-dot');
+  if(!dot)return;
+  const hasUnread=allChats.some(c=>(c.unread||0)>0);
+  dot.classList.toggle('active',hasUnread);
+}
 function openChat(id){
   openChatId=id;
   const c=allChats.find(i=>i.id===id);
@@ -317,16 +304,19 @@ function openChat(id){
   renderMsgs(c);
   openModal('m-chat');
   c.hoursAgo=0;
+  c.unread=0;          // mentor read the messages
   setData('chats',allChats);
   renderChats(allChats);
+  _updateNotifDot();
 }
 function renderMsgs(c){
   const el=document.getElementById('chat-msgs');
-  el.innerHTML=(c.msgs||[]).map(m=>`
-    <div>
-      <div class="bubble ${m.sent?'sent':'recv'}">${x(m.t)}</div>
-      <div class="btime ${m.sent?'sent':'recv'}">${m.time}</div>
-    </div>`).join('');
+  el.innerHTML=(c.msgs||[]).map(m=>{
+    const cls=m.from?(m.from==='mentor'?'sent':'recv'):(m.sent?'sent':'recv');
+    return`<div>
+      <div class="bubble ${cls}">${x(m.t)}</div>
+      <div class="btime ${cls}">${m.time}</div>
+    </div>`;}).join('');
   el.scrollTop=el.scrollHeight;
 }
 function sendMsg(){
@@ -336,8 +326,9 @@ function sendMsg(){
   const c=allChats.find(i=>i.id===openChatId);
   const now=new Date();
   const t=`${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
-  c.msgs.push({t:txt,sent:true,time:t});
+  c.msgs.push({t:txt,sent:true,from:'mentor',time:t});
   c.preview=txt;
+  c.mentorUnread=(c.mentorUnread||0)+1;  // notify student
   inp.value='';
   setData('chats',allChats);
   renderMsgs(c);
@@ -347,6 +338,7 @@ function sendMsg(){
 renderChats(allChats);
 renderFaqs(allFaqs);
 renderAnns(allAnns);
+_updateNotifDot();
 </script>
 </body>
 </html>

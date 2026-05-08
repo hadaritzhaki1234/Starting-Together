@@ -41,7 +41,7 @@
 
   <!-- COL 2 MIDDLE: FAQ (read-only) -->
   <div class="dash-col">
-    <div class="col-head" style="cursor:default;pointer-events:none">❓ שאלות נפוצות</div>
+    <a href="student-faq.html" class="col-head">❓ שאלות נפוצות <span class="col-head-arrow">↗</span></a>
     <div class="search-wrap" style="padding:10px 14px 6px">
       <input class="search-input" id="faq-search" placeholder="חיפוש בשאלות..." oninput="filterFaqs(this.value)">
       <span class="search-icon">🔍</span>
@@ -92,27 +92,41 @@ const U = requireStudent();
 if(!U) throw new Error('no user');
 populateHeader();
 
-const mentor   = getMentorObj();
-const allChats = getData('chats');
-const allFaqs  = getData('faqs');
-let   allAnns  = getData('anns');
+const mentor      = getMentorObj();
+const mentorChats = getData('chats');          // mentor's full student-chat list
+const allFaqs     = getData('faqs');
+let   allAnns     = getData('anns');
+
+// Find THIS student's own chat entry in the mentor's list
+let myChat = mentorChats.find(c=>c.id===U.id)||null;
+// If mentor data not yet seeded, create a placeholder entry
+if(!myChat && mentor){
+  const ini=U.n.split(' ').slice(0,2).map(w=>w[0]).join('');
+  myChat={_v:CHATS_V,id:U.id,name:U.n,initials:ini,color:'#3EA9A3',
+    online:false,hoursAgo:0,preview:'',prog:U.prog,yr:U.yr,msgs:[]};
+  mentorChats.push(myChat);
+  setData('chats',mentorChats);
+}
 
 /* ── MENTOR CHAT (single entry) ── */
 function renderChats(){
   const el=document.getElementById('chats-list');
   if(!mentor){el.innerHTML='<div class="no-results">לא נמצא חונך/ת עבורך</div>';return;}
-  const c=allChats[0];
-  if(!c){el.innerHTML='<div class="no-results">אין שיחות</div>';return;}
+  if(!myChat){el.innerHTML='<div class="no-results">אין שיחות</div>';return;}
+  const ini=mentor.n.split(' ').slice(0,2).map(w=>w[0]).join('');
   el.innerHTML=`
     <div style="text-align:center;padding:12px 0 8px">
-      <div class="avatar" style="background:${c.color};width:56px;height:56px;font-size:1.1rem;margin:0 auto 8px">
-        ${x(c.initials)}<span class="avatar-online"></span>
+      <div class="avatar" style="background:#3EA9A3;width:56px;height:56px;font-size:1.1rem;margin:0 auto 8px">
+        ${x(ini)}<span class="avatar-online"></span>
       </div>
-      <div style="font-weight:700;font-size:1rem">${x(c.name)}</div>
-      <div style="font-size:.78rem;color:var(--muted);margin-top:2px">${x(mentor.prog||'')} · שנה ${mentor.yr||''}</div>
+      <div style="font-weight:700;font-size:1rem">${x(mentor.n)}</div>
+      <div style="font-size:.78rem;color:var(--muted);margin-top:2px">${x(mentor.role||'חונך/ת')} · שנה ${mentor.yr||''}</div>
     </div>
     <div class="chat-item" onclick="openChat()" style="margin-top:8px">
-      <div class="chat-preview" style="font-size:.85rem;margin-bottom:8px">${x(c.preview)}</div>
+      ${(myChat.mentorUnread||0)>0?`<div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;color:var(--red);font-size:.8rem;font-weight:700">
+        <span class="chat-new-dot"></span> ${myChat.mentorUnread} הודעה חדשה מהחונך/ת
+      </div>`:''}
+      <div class="chat-preview" style="font-size:.85rem;margin-bottom:8px">${x(myChat.preview||'לחצו לפתיחת השיחה')}</div>
       <button class="btn-chat">💬 פתיחת שיחה</button>
     </div>`;
 }
@@ -121,7 +135,7 @@ function renderChats(){
 function renderFaqs(items){
   const el=document.getElementById('faq-list');
   if(!items||!items.length){el.innerHTML='<div class="no-results">אין שאלות נפוצות עדיין</div>';return;}
-  el.innerHTML=items.map(f=>`
+  el.innerHTML=items.slice(0,5).map(f=>`
     <div class="faq-item">
       <div class="faq-q" style="font-weight:700;font-size:.88rem;margin-bottom:6px">${x(f.q)}</div>
       <div class="faq-a">${x(f.a)}</div>
@@ -133,16 +147,12 @@ function filterFaqs(q){
 }
 
 /* ── ANNOUNCEMENTS: title only → click to reveal + view count ── */
-function _myAnns(){
-  return allAnns.filter(a=>!a.studentId||a.studentId===U.id);
-}
-
 function renderAnns(items){
   const el=document.getElementById('ann-list');
   if(!items||!items.length){el.innerHTML='<div class="no-results">אין הודעות עדיין</div>';return;}
-  el.innerHTML=items.map(a=>`
+  el.innerHTML=items.slice(0,5).map(a=>`
     <div class="ann-card ann-card-collapsed" id="ann-${a.id}" onclick="expandAnn(${a.id})">
-      <div class="ann-title">${x(a.title||a.studentName||'הודעה חדשה')}</div>
+      <div class="ann-title">${x(a.title||'הודעה חדשה')}</div>
       <div id="ann-body-${a.id}" class="ann-body" style="display:none;margin-top:8px">${x(a.body)}</div>
       <div class="ann-foot" style="margin-top:6px">
         <span class="ann-reveal-hint" id="ann-hint-${a.id}">לחץ לקריאה ›</span>
@@ -175,47 +185,57 @@ function expandAnn(id){
 }
 
 function filterAnns(q){
-  const f = q.trim().toLowerCase();
-  const base = _myAnns();
-  renderAnns(f ? base.filter(a=>(a.studentName||'').toLowerCase().includes(f)||a.body.toLowerCase().includes(f)) : base);
+  const f=q.trim().toLowerCase();
+  renderAnns(f?allAnns.filter(a=>(a.title||'').toLowerCase().includes(f)||a.body.toLowerCase().includes(f)):allAnns);
 }
 
 /* ── CHAT MODAL ── */
+function _updateNotifDot(){
+  const dot=document.querySelector('.notif-dot');
+  if(!dot)return;
+  dot.classList.toggle('active',(myChat&&(myChat.mentorUnread||0)>0));
+}
 function openChat(){
-  const c=allChats[0];
-  if(!c)return;
-  document.getElementById('m-chat-name').textContent=`שיחה עם ${c.name}`;
-  document.getElementById('m-chat-meta').textContent=`${mentor?mentor.prog:''} · שנה ${mentor?mentor.yr:''}`;
-  renderMsgs(c);
+  if(!myChat)return;
+  document.getElementById('m-chat-name').textContent=`שיחה עם ${mentor?mentor.n:'החונך/ת'}`;
+  document.getElementById('m-chat-meta').textContent=`${mentor?mentor.role||'חונך/ת':''} · שנה ${mentor?mentor.yr:''}`;
+  renderMsgs(myChat);
   openModal('m-chat');
+  myChat.mentorUnread=0;   // student read the mentor's messages
+  setData('chats',mentorChats);
+  renderChats();            // refresh to hide the dot
+  _updateNotifDot();
+  setTimeout(()=>document.getElementById('chat-in').focus(),200);
 }
 function renderMsgs(c){
   const el=document.getElementById('chat-msgs');
-  el.innerHTML=(c.msgs||[]).map(m=>`
-    <div>
-      <div class="bubble ${m.sent?'sent':'recv'}">${x(m.t)}</div>
-      <div class="btime ${m.sent?'sent':'recv'}">${m.time}</div>
-    </div>`).join('');
+  el.innerHTML=(c.msgs||[]).map(m=>{
+    // Student perspective: messages from 'student' → sent bubble; from 'mentor' → recv bubble
+    const cls=m.from?(m.from==='student'?'sent':'recv'):(m.sent?'recv':'sent');
+    return`<div>
+      <div class="bubble ${cls}">${x(m.t)}</div>
+      <div class="btime ${cls}">${m.time}</div>
+    </div>`;}).join('');
   el.scrollTop=el.scrollHeight;
 }
 function sendMsg(){
   const inp=document.getElementById('chat-in');
   const txt=inp.value.trim();
-  if(!txt)return;
-  const c=allChats[0];
-  if(!c)return;
+  if(!txt||!myChat)return;
   const now=new Date();
   const t=`${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
-  c.msgs.push({t:txt,sent:true,time:t});
-  c.preview=txt;
+  myChat.msgs.push({t:txt,sent:true,from:'student',time:t});
+  myChat.preview=txt;
+  myChat.unread=(myChat.unread||0)+1;  // notify mentor
   inp.value='';
-  setData('chats',allChats);
-  renderMsgs(c);
+  setData('chats',mentorChats);
+  renderMsgs(myChat);
 }
 
 renderChats();
 renderFaqs(allFaqs);
-renderAnns(_myAnns());
+renderAnns(allAnns);
+_updateNotifDot();
 </script>
 </body>
 </html>
