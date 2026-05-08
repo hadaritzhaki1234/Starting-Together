@@ -131,12 +131,15 @@
 
 <div class="toast" id="toast"></div>
 
+<script src="https://www.gstatic.com/firebasejs/12.13.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/12.13.0/firebase-database-compat.js"></script>
 <script src="db.js"></script>
 <script src="app.js"></script>
+<script src="firebase-config.js"></script>
 <script>
 'use strict';
 const U = requireMentor();
-if(U) populateHeader();
+if(U){ populateHeader(); fbSeedIfEmpty(); }
 
 // Student count badge (inline in header)
 if(U){
@@ -339,6 +342,19 @@ renderChats(allChats);
 renderFaqs(allFaqs);
 renderAnns(allAnns);
 _updateNotifDot();
+
+/* ── Firebase: sync latest data then subscribe to real-time chat updates ── */
+fbSync(['chats','faqs','anns'], upd=>{
+  if(upd.chats){allChats=upd.chats;renderChats(allChats);_updateNotifDot();}
+  if(upd.faqs) {allFaqs=upd.faqs; renderFaqs(allFaqs);}
+  if(upd.anns) {allAnns=upd.anns; renderAnns(allAnns);}
+});
+fbListen('chats', updated=>{
+  allChats=updated;
+  renderChats(allChats);
+  _updateNotifDot();
+  if(openChatId){const c=allChats.find(i=>i.id===openChatId);if(c)renderMsgs(c);}
+});
 </script>
 </body>
 </html>

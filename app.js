@@ -116,7 +116,12 @@ function getData(key){
   if(key==='faqs'){const f=JSON.parse(JSON.stringify(FAQ_DEFAULTS));f.forEach(i=>{i._v=FAQS_V;});return f;}
   return[];
 }
-function setData(key,val){localStorage.setItem(_storageKey(key),JSON.stringify(val));}
+function setData(key,val){
+  const raw=JSON.stringify(val);
+  localStorage.setItem(_storageKey(key),raw);
+  /* Mirror to Firebase Realtime DB when available */
+  if(typeof fbWrite==='function') fbWrite(key,val);
+}
 
 /* ══ CHATS builder ══ */
 const CHAT_PREVIEWS=[

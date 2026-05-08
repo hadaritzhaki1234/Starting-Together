@@ -84,8 +84,11 @@
 
 <div class="toast" id="toast"></div>
 
+<script src="https://www.gstatic.com/firebasejs/12.13.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/12.13.0/firebase-database-compat.js"></script>
 <script src="db.js"></script>
 <script src="app.js"></script>
+<script src="firebase-config.js"></script>
 <script>
 'use strict';
 const U = requireStudent();
@@ -236,6 +239,23 @@ renderChats();
 renderFaqs(allFaqs);
 renderAnns(allAnns);
 _updateNotifDot();
+
+/* ── Firebase: sync FAQs/anns, then real-time listen for chat messages ── */
+fbSync(['faqs','anns'], upd=>{
+  if(upd.faqs){allFaqs=upd.faqs; renderFaqs(allFaqs);}
+  if(upd.anns){allAnns=upd.anns; renderAnns(allAnns);}
+});
+fbListen('chats', updatedChats=>{
+  /* Find this student's entry and refresh */
+  const fresh=updatedChats.find(c=>c.id===U.id);
+  if(!fresh)return;
+  const idx=mentorChats.findIndex(c=>c.id===U.id);
+  if(idx>=0)mentorChats[idx]=fresh; else mentorChats.push(fresh);
+  Object.assign(myChat,fresh);
+  renderChats();
+  _updateNotifDot();
+  if(!document.getElementById('m-chat').classList.contains('hidden'))renderMsgs(myChat);
+});
 </script>
 </body>
 </html>

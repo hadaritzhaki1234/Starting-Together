@@ -42,8 +42,11 @@
 
 <div class="toast" id="toast"></div>
 
+<script src="https://www.gstatic.com/firebasejs/12.13.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/12.13.0/firebase-database-compat.js"></script>
 <script src="db.js"></script>
 <script src="app.js"></script>
+<script src="firebase-config.js"></script>
 <script>
 'use strict';
 const U = requireStudent();
@@ -72,6 +75,7 @@ function filterFaqs(q){
 }
 
 renderFaqs(faqs);
+fbSync(['faqs'], upd=>{if(upd.faqs){faqs=upd.faqs;renderFaqs(faqs);}});
 </script>
 </body>
 </html>
