@@ -1,0 +1,594 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>מתחילים יחד — ניהול משתמשים</title>
+<link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --teal:#3EA9A3;--teal-d:#2E9089;--red:#ef4444;--green:#16a34a;
+  --border:#e5e7eb;--text:#111827;--muted:#9ca3af;--mid:#374151;
+  --bg:#EEF2FF;--white:#fff;
+  --grad:linear-gradient(135deg,#5BBFB8 0%,#4498BC 100%);
+}
+body{font-family:'Heebo',system-ui,sans-serif;direction:rtl;background:var(--bg);color:var(--text);min-height:100vh}
+
+/* ── HEADER ── */
+.hdr{background:var(--grad);height:56px;display:flex;align-items:center;justify-content:space-between;padding:0 24px;position:sticky;top:0;z-index:100}
+.hdr-logo{color:#fff;font-size:1.05rem;font-weight:800}
+.hdr-logo span{color:#a7f3d0}
+.hdr-right{display:flex;align-items:center;gap:12px}
+.btn-logout{background:rgba(255,255,255,.18);color:#fff;border:none;border-radius:8px;padding:6px 14px;font-family:'Heebo',sans-serif;font-size:.82rem;font-weight:700;cursor:pointer}
+.btn-logout:hover{background:rgba(255,255,255,.28)}
+
+/* ── SCREENS ── */
+.screen{display:none;max-width:960px;margin:0 auto;padding:32px 20px}
+.screen.active{display:block}
+
+/* ── LOGIN ── */
+.login-card{background:#fff;border-radius:18px;padding:44px 36px;max-width:400px;margin:60px auto;box-shadow:0 12px 40px rgba(0,0,0,.12)}
+.login-logo{font-size:1.4rem;font-weight:800;color:var(--teal);text-align:center;margin-bottom:20px}
+.login-logo span{color:#7C3AED}
+.login-title{font-size:1rem;font-weight:700;text-align:center;color:var(--mid);margin-bottom:22px}
+.fg{margin-bottom:14px}
+.fg label{display:block;font-size:.8rem;font-weight:600;color:var(--mid);margin-bottom:5px}
+.fg input{width:100%;padding:10px 13px;border:1.5px solid var(--border);border-radius:8px;font-family:'Heebo',sans-serif;font-size:.92rem;direction:rtl;outline:none;transition:border-color .2s}
+.fg input:focus{border-color:var(--teal)}
+.err-msg{background:#fee2e2;color:var(--red);font-size:.82rem;padding:8px 12px;border-radius:8px;margin-bottom:12px;display:none}
+.err-msg.show{display:block}
+.btn-primary{width:100%;padding:12px;background:var(--teal);color:#fff;border:none;border-radius:8px;font-family:'Heebo',sans-serif;font-size:.96rem;font-weight:700;cursor:pointer;transition:background .2s}
+.btn-primary:hover{background:var(--teal-d)}
+.btn-primary:disabled{opacity:.55;cursor:not-allowed}
+
+/* ── UPLOAD ── */
+.page-title{font-size:1.4rem;font-weight:800;margin-bottom:6px}
+.page-sub{color:var(--muted);font-size:.85rem;margin-bottom:28px}
+.drop-zone{border:2.5px dashed #93c5fd;border-radius:16px;background:#eff6ff;padding:48px 24px;text-align:center;cursor:pointer;transition:border-color .2s,background .2s}
+.drop-zone:hover,.drop-zone.drag-over{border-color:var(--teal);background:#eaf6f5}
+.drop-icon{font-size:2.8rem;margin-bottom:12px}
+.drop-text{font-size:1rem;font-weight:700;color:var(--mid);margin-bottom:4px}
+.drop-sub{font-size:.82rem;color:var(--muted)}
+#file-input{display:none}
+
+/* ── PREVIEW ── */
+.stats-bar{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:24px}
+.stat-card{background:#fff;border-radius:12px;padding:16px;text-align:center;border:1px solid var(--border)}
+.stat-num{font-size:1.7rem;font-weight:800;color:var(--teal)}
+.stat-lbl{font-size:.75rem;color:var(--muted);margin-top:2px}
+.warning-box{background:#fef9c3;border:1px solid #fde047;border-radius:10px;padding:12px 16px;margin-bottom:18px;font-size:.83rem;color:#854d0e}
+.warning-box ul{margin-top:6px;padding-right:16px}
+.warning-box li{margin-bottom:3px}
+.table-wrap{background:#fff;border-radius:12px;border:1px solid var(--border);overflow:hidden;margin-bottom:20px}
+.data-table{width:100%;border-collapse:collapse;font-size:.82rem}
+.data-table th{background:#f9fafb;padding:10px 12px;font-weight:700;text-align:right;border-bottom:1px solid var(--border);white-space:nowrap}
+.data-table td{padding:9px 12px;border-bottom:1px solid #f3f4f6;vertical-align:middle}
+.data-table tr:last-child td{border-bottom:none}
+.data-table tr:hover td{background:#f9fafb}
+.tag{display:inline-block;font-size:.68rem;font-weight:700;padding:2px 7px;border-radius:20px;margin:1px}
+.tag-ar{background:#dbeafe;color:#1d4ed8}
+.tag-ld{background:#f3e8ff;color:#7e22ce}
+.tag-fac{background:#dcfce7;color:#15803d}
+.mentor-chip{display:inline-block;font-size:.7rem;background:#e0f2fe;color:#0369a1;border-radius:20px;padding:2px 8px;margin:1px;white-space:nowrap}
+.mentor-chip.arabic{background:#fce7f3;color:#9d174d}
+.mentor-chip.ld{background:#f3e8ff;color:#7e22ce}
+.no-mentor{color:var(--red);font-weight:600;font-size:.78rem}
+.actions-row{display:flex;gap:12px;justify-content:flex-end;margin-top:4px}
+.btn-back{background:#fff;color:var(--mid);border:1.5px solid var(--border);border-radius:8px;padding:10px 20px;font-family:'Heebo',sans-serif;font-size:.9rem;font-weight:700;cursor:pointer}
+.btn-back:hover{background:#f9fafb}
+.btn-push{background:var(--teal);color:#fff;border:none;border-radius:8px;padding:10px 24px;font-family:'Heebo',sans-serif;font-size:.9rem;font-weight:700;cursor:pointer;transition:background .2s}
+.btn-push:hover{background:var(--teal-d)}
+.btn-push:disabled{opacity:.55;cursor:not-allowed}
+
+/* ── SUCCESS ── */
+.success-card{background:#fff;border-radius:18px;padding:48px;text-align:center;max-width:480px;margin:60px auto;box-shadow:0 12px 40px rgba(0,0,0,.1)}
+.success-icon{font-size:3.5rem;margin-bottom:16px}
+.success-title{font-size:1.3rem;font-weight:800;margin-bottom:8px}
+.success-sub{font-size:.88rem;color:var(--muted);margin-bottom:28px}
+.btn-again{background:var(--teal);color:#fff;border:none;border-radius:8px;padding:12px 28px;font-family:'Heebo',sans-serif;font-size:.95rem;font-weight:700;cursor:pointer}
+
+/* ── MISC ── */
+.spinner{display:inline-block;width:16px;height:16px;border:2.5px solid rgba(255,255,255,.4);border-top-color:#fff;border-radius:50%;animation:spin .6s linear infinite;vertical-align:middle;margin-left:6px}
+@keyframes spin{to{transform:rotate(360deg)}}
+.tab-btns{display:flex;gap:8px;margin-bottom:16px}
+.tab-btn{padding:6px 16px;border-radius:20px;border:1.5px solid var(--border);background:#fff;font-family:'Heebo',sans-serif;font-size:.82rem;font-weight:700;cursor:pointer;color:var(--mid)}
+.tab-btn.active{background:var(--teal);color:#fff;border-color:var(--teal)}
+</style>
+</head>
+<body>
+
+<header class="hdr">
+  <div class="hdr-logo">מתחילים <span>יחד</span> — ניהול</div>
+  <div class="hdr-right">
+    <span id="hdr-user" style="color:rgba(255,255,255,.8);font-size:.82rem"></span>
+    <button class="btn-logout" onclick="adminLogout()">יציאה</button>
+  </div>
+</header>
+
+<!-- ════ SCREEN: LOGIN ════ -->
+<div class="screen active" id="screen-login">
+  <div class="login-card">
+    <div class="login-logo">מתחילים <span>יחד</span></div>
+    <div class="login-title">🔐 כניסה לפאנל הניהול</div>
+    <div class="err-msg" id="login-err">פרטי התחברות שגויים</div>
+    <div class="fg"><label>דוא"ל מנהל</label>
+      <input type="email" id="adm-em" placeholder="admin@mty.ac.il" onkeydown="if(event.key==='Enter')adminLogin()">
+    </div>
+    <div class="fg"><label>סיסמה</label>
+      <input type="password" id="adm-pw" placeholder="••••••••" onkeydown="if(event.key==='Enter')adminLogin()">
+    </div>
+    <button class="btn-primary" id="login-btn" onclick="adminLogin()">כניסה</button>
+  </div>
+</div>
+
+<!-- ════ SCREEN: UPLOAD ════ -->
+<div class="screen" id="screen-upload">
+  <div class="page-title">📤 העלאת קובץ משתמשים</div>
+  <div class="page-sub">העלה קובץ Excel עם שני גליונות: <strong>סטודנטים</strong> ו-<strong>חונכים</strong> (או mentors / students)</div>
+
+  <div class="drop-zone" id="drop-zone" onclick="document.getElementById('file-input').click()"
+       ondragover="event.preventDefault();this.classList.add('drag-over')"
+       ondragleave="this.classList.remove('drag-over')"
+       ondrop="handleDrop(event)">
+    <div class="drop-icon">📊</div>
+    <div class="drop-text">גרור קובץ Excel לכאן או לחץ לבחירה</div>
+    <div class="drop-sub">תומך בקבצי .xlsx ו-.xls</div>
+  </div>
+  <input type="file" id="file-input" accept=".xlsx,.xls" onchange="handleFile(this.files[0])">
+
+  <div id="upload-status" style="margin-top:16px;font-size:.85rem;color:var(--muted)"></div>
+</div>
+
+<!-- ════ SCREEN: PREVIEW ════ -->
+<div class="screen" id="screen-preview">
+  <div class="page-title">👁 תצוגה מקדימה — תוצאות שיבוץ</div>
+  <div class="page-sub" id="preview-sub"></div>
+
+  <div class="stats-bar" id="stats-bar"></div>
+  <div id="warnings-box"></div>
+
+  <div class="tab-btns">
+    <button class="tab-btn active" onclick="showTab('students')">סטודנטים</button>
+    <button class="tab-btn" onclick="showTab('mentors')">חונכים</button>
+  </div>
+
+  <div class="table-wrap">
+    <table class="data-table" id="preview-table"><thead></thead><tbody></tbody></table>
+  </div>
+
+  <div class="actions-row">
+    <button class="btn-back" onclick="goBack()">← חזרה</button>
+    <button class="btn-push" id="push-btn" onclick="pushToFirebase()">
+      🚀 דחיפת נתונים למסד הנתונים
+    </button>
+  </div>
+</div>
+
+<!-- ════ SCREEN: SUCCESS ════ -->
+<div class="screen" id="screen-success">
+  <div class="success-card">
+    <div class="success-icon">✅</div>
+    <div class="success-title">הנתונים נדחפו בהצלחה!</div>
+    <div class="success-sub" id="success-sub"></div>
+    <button class="btn-again" onclick="showScreen('screen-upload')">העלאה נוספת</button>
+  </div>
+</div>
+
+<script src="https://unpkg.com/xlsx/dist/xlsx.full.min.js"></script>
+<script src="https://www.gstatic.com/firebasejs/12.13.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/12.13.0/firebase-database-compat.js"></script>
+<script src="db.js"></script>
+<script src="firebase-config.js"></script>
+<script>
+'use strict';
+
+/* ══ Admin credentials (same as login.html) ══ */
+const ADMIN = { e:'admin@mty.ac.il', p:'Admin@2024' };
+
+/* ══ State ══ */
+let _parsedMentors = [];
+let _parsedStudents = [];
+let _currentTab = 'students';
+
+/* ══ Screen helpers ══ */
+function showScreen(id){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+
+/* ══ Auth ══ */
+function adminLogin(){
+  const em = document.getElementById('adm-em').value.trim().toLowerCase();
+  const pw = document.getElementById('adm-pw').value.trim();
+  const err = document.getElementById('login-err');
+  err.classList.remove('show');
+  if(em===ADMIN.e && pw===ADMIN.p){
+    document.getElementById('hdr-user').textContent='מנהל מערכת';
+    showScreen('screen-upload');
+  } else {
+    err.classList.add('show');
+  }
+}
+function adminLogout(){
+  window.location.href='index.html';
+}
+
+/* ══ File handling ══ */
+function handleDrop(e){
+  e.preventDefault();
+  document.getElementById('drop-zone').classList.remove('drag-over');
+  const f = e.dataTransfer.files[0];
+  if(f) handleFile(f);
+}
+
+function handleFile(file){
+  if(!file){ return; }
+  if(!/\.(xlsx|xls)$/i.test(file.name)){
+    setStatus('❌ קובץ לא תקין — יש להעלות קובץ Excel (.xlsx / .xls)','red');
+    return;
+  }
+  setStatus('⏳ קורא קובץ…','');
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const wb = XLSX.read(e.target.result, {type:'array'});
+      parseWorkbook(wb);
+    } catch(err){
+      setStatus('❌ שגיאה בקריאת הקובץ: ' + err.message,'red');
+    }
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+function setStatus(msg, color){
+  const el = document.getElementById('upload-status');
+  el.textContent = msg;
+  el.style.color = color==='red' ? 'var(--red)' : color==='green' ? 'var(--green)' : 'var(--muted)';
+}
+
+/* ══ Sheet detection ══ */
+const MENTOR_KEYWORDS  = ['חונכים','חונך','mentor','mentors'];
+const STUDENT_KEYWORDS = ['סטודנטים','סטודנט','student','students'];
+
+function detectSheet(wb, keywords){
+  for(const name of wb.SheetNames){
+    if(keywords.some(k => name.toLowerCase().includes(k.toLowerCase()))) return name;
+  }
+  return null;
+}
+
+/* ══ Column mapping ══ */
+const COL = {
+  id:    ['תז','ת"ז','מזהה','id'],
+  first: ['שם פרטי','first'],
+  last:  ['שם משפחה','last'],
+  email: ['אימייל','דואל','email','e-mail'],
+  pass:  ['ססמא','סיסמה','סיסמא','password','pass'],
+  phone: ['מספר טלפון','טלפון','phone'],
+  role:  ['תפקיד','role'],
+  prog:  ['חוג לימודים','חוג','תחום','faculty','program','prog'],
+  lang:  ['שפת אם','שפה','language','lang'],
+  ld:    ['האם יש לקויות למידה','לקויות','ld','disability'],
+  yr:    ['שנת לימוד','שנה','year','yr'],
+};
+
+function findCol(headers, aliases){
+  for(const a of aliases){
+    const idx = headers.findIndex(h => String(h).trim().toLowerCase() === a.toLowerCase());
+    if(idx >= 0) return idx;
+  }
+  return -1;
+}
+
+function parseBool(v){
+  if(v === null || v === undefined || v === '') return false;
+  return /^(כן|yes|true|1|TRUE|YES)$/i.test(String(v).trim());
+}
+
+function sheetToObjects(sheet, isMentor){
+  const rows = XLSX.utils.sheet_to_json(sheet, {header:1, defval:''});
+  if(rows.length < 2) return [];
+  const headers = rows[0].map(h => String(h||'').trim());
+  const ci = {};
+  for(const [k,aliases] of Object.entries(COL)) ci[k] = findCol(headers, aliases);
+
+  const palette = _PALETTE || ['#3EA9A3','#3B82F6','#8B5CF6','#F59E0B','#EF4444','#10B981','#F97316','#6366F1'];
+
+  return rows.slice(1).filter(r => r.some(c=>c!=='')).map((r, i) => {
+    const get = k => ci[k]>=0 ? String(r[ci[k]]||'').trim() : '';
+    const firstName = get('first');
+    const lastName  = get('last');
+    const fullName  = [firstName, lastName].filter(Boolean).join(' ') || `משתמש ${i+1}`;
+    const ini = fullName.split(' ').slice(0,2).map(w=>w[0]).join('');
+    const id  = get('id') || String(i + (isMentor ? 1000 : 1));
+    const numId = parseInt(id) || (isMentor ? 1000+i : i+1);
+    return {
+      id:      numId,
+      n:       fullName,
+      ini,
+      color:   palette[i % palette.length],
+      e:       get('email').toLowerCase(),
+      p:       get('pass'),
+      phone:   get('phone'),
+      prog:    get('prog'),
+      lang:    get('lang'),
+      ld:      parseBool(get('ld')),
+      yr:      parseInt(get('yr')) || 1,
+      role:    isMentor ? (get('role') || 'חונך/ת') : undefined,
+      isMentor,
+      mentors:  isMentor ? undefined : [],   /* filled by matching */
+      students: isMentor ? [] : undefined,   /* filled by matching */
+    };
+  }).filter(u => u.e); /* skip rows without email */
+}
+
+/* ══ Workbook parsing — fetches existing Firebase DB first, then merges & matches ══ */
+function parseWorkbook(wb){
+  const mentorSheetName  = detectSheet(wb, MENTOR_KEYWORDS);
+  const studentSheetName = detectSheet(wb, STUDENT_KEYWORDS);
+
+  /* Positional fallback for unnamed sheets */
+  const mentorSheet  = mentorSheetName  || (wb.SheetNames.length >= 2 ? wb.SheetNames[1] : null);
+  const studentSheet = studentSheetName || (wb.SheetNames.length >= 1 ? wb.SheetNames[0] : null);
+
+  const newMentors  = (mentorSheet  && wb.Sheets[mentorSheet])  ? sheetToObjects(wb.Sheets[mentorSheet],  true)  : [];
+  const newStudents = (studentSheet && wb.Sheets[studentSheet]) ? sheetToObjects(wb.Sheets[studentSheet], false) : [];
+
+  if(!newMentors.length && !newStudents.length){
+    setStatus('❌ הקובץ ריק או שהעמודות אינן תואמות את הפורמט הנדרש','red');
+    return;
+  }
+
+  /* Fetch existing Firebase DB so we can match new students against current mentors */
+  setStatus('⏳ טוען חונכים קיימים ממסד הנתונים…','');
+
+  fbLoadDB(existing => {
+    const exMentors  = (existing && existing.mentors)  || getMentorsDB() || [];
+    const exStudents = (existing && existing.students) || getStudentsDB() || [];
+
+    /* ── Merge mentors ── */
+    const mergedMentors = exMentors.map(m=>({...m, students:[]}));
+    newMentors.forEach(nm => {
+      const idx = mergedMentors.findIndex(m => m.e === nm.e);
+      if(idx >= 0) Object.assign(mergedMentors[idx], nm);
+      else mergedMentors.push({...nm, students:[]});
+    });
+
+    /* ── Merge students: existing keep their assignments, new ones get matched now ── */
+    const mergedStudents = exStudents.map(s=>({...s}));
+    const toMatch = [];
+
+    newStudents.forEach(ns => {
+      const idx = mergedStudents.findIndex(s => s.e === ns.e);
+      if(idx >= 0){
+        const keepMentors = mergedStudents[idx].mentors || [];
+        Object.assign(mergedStudents[idx], ns);
+        mergedStudents[idx].mentors = keepMentors;
+      } else {
+        const fresh = {...ns, mentors:[]};
+        mergedStudents.push(fresh);
+        toMatch.push(fresh);
+      }
+    });
+
+    /* ── Match new students against ALL mentors (existing + new from file) ── */
+    if(toMatch.length && mergedMentors.length){
+      const load = {};
+      mergedMentors.forEach(m => { load[m.e] = (m.students||[]).length; });
+      _matchStudents(toMatch, mergedMentors, load);
+    }
+
+    /* ── Rebuild each mentor's student list ── */
+    mergedMentors.forEach(m => {
+      m.students = mergedStudents
+        .filter(s => Array.isArray(s.mentors) && s.mentors.includes(m.e))
+        .map(s => s.id);
+    });
+
+    _parsedMentors  = mergedMentors;
+    _parsedStudents = mergedStudents;
+
+    const parts = [];
+    if(newMentors.length)  parts.push(`${newMentors.length} חונכים מהקובץ`);
+    if(newStudents.length) parts.push(`${newStudents.length} סטודנטים מהקובץ`);
+    if(!newMentors.length && exMentors.length)   parts.push(`${exMentors.length} חונכים קיימים`);
+    if(!newStudents.length && exStudents.length) parts.push(`${exStudents.length} סטודנטים קיימים`);
+    setStatus(`✅ ${parts.join(' · ')} — סה"כ ${mergedMentors.length} חונכים, ${mergedStudents.length} סטודנטים`,'green');
+
+    buildPreview();
+    showScreen('screen-preview');
+  });
+}
+
+/* ══ Matching algorithm ══ */
+function runMatching(mentors, students){
+  /* Deep-copy to avoid mutation on re-run */
+  mentors  = mentors.map(m=>({...m, students:[]}));
+  students = students.map(s=>({...s, mentors:[]}));
+
+  const load = {};
+  mentors.forEach(m => { load[m.e] = 0; });
+
+  /* Indexes */
+  const byFaculty = {};
+  mentors.forEach(m => {
+    if(!byFaculty[m.prog]) byFaculty[m.prog] = [];
+    byFaculty[m.prog].push(m);
+  });
+  const arabicMentors = mentors.filter(m => /ערבית/i.test(m.lang));
+  const ldMentors     = mentors.filter(m => m.ld === true);
+
+  /* Pick least-loaded mentor from pool excluding already-assigned emails */
+  function pick(pool, exclude){
+    const cands = pool.filter(m => !exclude.includes(m.e));
+    if(!cands.length) return null;
+    cands.sort((a,b) => load[a.e] - load[b.e]);
+    return cands[0];
+  }
+
+  function assign(student, mentor, role){
+    if(!mentor) return;
+    student.mentors.push(mentor.e);
+    student._mentorRoles = student._mentorRoles || {};
+    student._mentorRoles[mentor.e] = role;
+    mentor.students.push(student.id);
+    load[mentor.e]++;
+  }
+
+  students.forEach(s => {
+    /* 1. Primary: same faculty */
+    const primary = pick(byFaculty[s.prog] || [], s.mentors);
+    assign(s, primary, 'faculty');
+
+    /* 2. Arabic: if student's mother tongue is Arabic */
+    if(/ערבית/i.test(s.lang)){
+      const ar = pick(arabicMentors, s.mentors);
+      assign(s, ar, 'arabic');
+    }
+
+    /* 3. Disabilities: if student has learning disabilities */
+    if(s.ld){
+      const ld = pick(ldMentors, s.mentors);
+      assign(s, ld, 'ld');
+    }
+  });
+
+  return { mentors, students };
+}
+
+/* ══ Preview ══ */
+function buildPreview(){
+  /* Stats */
+  const unassigned = _parsedStudents.filter(s=>!s.mentors.length);
+  const mentorsNoStudents = _parsedMentors.filter(m=>!m.students.length);
+  const needAr = _parsedStudents.filter(s=>/ערבית/i.test(s.lang));
+  const needLd = _parsedStudents.filter(s=>s.ld);
+  const got2   = _parsedStudents.filter(s=>s.mentors.length>=2);
+  const got3   = _parsedStudents.filter(s=>s.mentors.length===3);
+
+  document.getElementById('stats-bar').innerHTML = [
+    {n:_parsedMentors.length,  l:'חונכים'},
+    {n:_parsedStudents.length, l:'סטודנטים'},
+    {n:got2.length,            l:'2 חונכים+'},
+    {n:got3.length,            l:'3 חונכים'},
+    {n:unassigned.length,      l:'ללא חונך'},
+    {n:mentorsNoStudents.length,l:'חונכים ללא סטודנטים'},
+  ].map(c=>`<div class="stat-card"><div class="stat-num" style="${c.n>0&&(c.l.includes('ללא')||c.l.includes('ללא'))&&c.l!=='חונכים ללא סטודנטים'?'color:var(--red)':''}">${c.n}</div><div class="stat-lbl">${c.l}</div></div>`).join('');
+
+  /* Warnings */
+  const warns = [];
+  if(unassigned.length) warns.push(`${unassigned.length} סטודנטים ללא חונך ראשי — ייתכן שאין חונך עם אותו חוג לימודים`);
+  if(mentorsNoStudents.length) warns.push(`${mentorsNoStudents.length} חונכים ללא סטודנטים משובצים`);
+  if(needAr.length && arabicMentorsCount()===0) warns.push('אין חונכים דוברי ערבית — סטודנטים ערביים לא שובצו לחונך שפה');
+  if(needLd.length && ldMentorsCount()===0) warns.push('אין חונכים לקויות למידה — סטודנטים עם ל"ל לא שובצו לחונך מתמחה');
+
+  const wb = document.getElementById('warnings-box');
+  wb.innerHTML = warns.length ? `<div class="warning-box">⚠️ <strong>שים לב:</strong><ul>${warns.map(w=>`<li>${w}</li>`).join('')}</ul></div>` : '';
+
+  const now = new Date().toLocaleDateString('he-IL',{day:'numeric',month:'long',year:'numeric'});
+  document.getElementById('preview-sub').textContent = `${_parsedMentors.length} חונכים · ${_parsedStudents.length} סטודנטים · ${now}`;
+
+  _currentTab = 'students';
+  document.querySelectorAll('.tab-btn').forEach((b,i)=>b.classList.toggle('active',i===0));
+  renderTable('students');
+}
+
+function arabicMentorsCount(){ return _parsedMentors.filter(m=>/ערבית/i.test(m.lang)).length; }
+function ldMentorsCount(){ return _parsedMentors.filter(m=>m.ld).length; }
+
+function showTab(tab){
+  _currentTab = tab;
+  document.querySelectorAll('.tab-btn').forEach(b=>{
+    b.classList.toggle('active', b.textContent.includes(tab==='students'?'סטודנטים':'חונכים'));
+  });
+  renderTable(tab);
+}
+
+function _mentorChip(email){
+  const m = _parsedMentors.find(m=>m.e===email);
+  const name = m ? m.n : email;
+  /* Determine role tag */
+  const isAr = m && /ערבית/i.test(m.lang);
+  const isLd = m && m.ld;
+  const cls  = isAr ? 'arabic' : isLd ? 'ld' : '';
+  const suffix = isAr?' (ערבית)': isLd?' (ל"ל)':'';
+  return `<span class="mentor-chip ${cls}">${name}${suffix}</span>`;
+}
+
+function renderTable(tab){
+  const tbl = document.getElementById('preview-table');
+  if(tab === 'students'){
+    tbl.querySelector('thead').innerHTML = `<tr>
+      <th>שם</th><th>חוג לימודים</th><th>שפת אם</th><th>ל"ל</th><th>שנה</th><th>חונכים משובצים</th>
+    </tr>`;
+    tbl.querySelector('tbody').innerHTML = _parsedStudents.map(s=>`<tr>
+      <td><strong>${s.n}</strong><br><span style="font-size:.72rem;color:var(--muted)">${s.e}</span></td>
+      <td><span class="tag tag-fac">${s.prog||'—'}</span></td>
+      <td>${/ערבית/i.test(s.lang)?'<span class="tag tag-ar">ערבית</span>':s.lang||'—'}</td>
+      <td>${s.ld?'<span class="tag tag-ld">כן</span>':'לא'}</td>
+      <td>${s.yr}</td>
+      <td>${s.mentors.length ? s.mentors.map(_mentorChip).join('') : '<span class="no-mentor">⚠ ללא חונך</span>'}</td>
+    </tr>`).join('');
+  } else {
+    tbl.querySelector('thead').innerHTML = `<tr>
+      <th>שם</th><th>חוג לימודים</th><th>שפת אם</th><th>ל"ל</th><th>שנה</th><th>מספר סטודנטים</th>
+    </tr>`;
+    tbl.querySelector('tbody').innerHTML = _parsedMentors.map(m=>`<tr>
+      <td><strong>${m.n}</strong><br><span style="font-size:.72rem;color:var(--muted)">${m.e}</span></td>
+      <td><span class="tag tag-fac">${m.prog||'—'}</span></td>
+      <td>${/ערבית/i.test(m.lang)?'<span class="tag tag-ar">ערבית</span>':m.lang||'—'}</td>
+      <td>${m.ld?'<span class="tag tag-ld">כן</span>':'לא'}</td>
+      <td>${m.yr}</td>
+      <td><strong>${m.students.length}</strong> סטודנטים</td>
+    </tr>`).join('');
+  }
+}
+
+function goBack(){
+  showScreen('screen-upload');
+  document.getElementById('file-input').value='';
+  setStatus('','');
+}
+
+/* ══ Firebase push — data is already merged & matched in parseWorkbook, just save it ══ */
+function pushToFirebase(){
+  const btn = document.getElementById('push-btn');
+  btn.disabled = true;
+  btn.innerHTML = '⏳ דוחף… <span class="spinner"></span>';
+
+  const mentors  = _parsedMentors.map(({_mentorRoles,...r})=>r);
+  const students = _parsedStudents.map(({_mentorRoles,...r})=>r);
+
+  fbPushAdminDB(mentors, students, (ok, errMsg) => {
+    if(ok){
+      localStorage.setItem('_dyn_mentors',  JSON.stringify(mentors));
+      localStorage.setItem('_dyn_students', JSON.stringify(students));
+      document.getElementById('success-sub').textContent =
+        `סה"כ ${mentors.length} חונכים ו-${students.length} סטודנטים במסד הנתונים. המשתמשים יוכלו להתחבר מיד.`;
+      showScreen('screen-success');
+    } else {
+      btn.disabled = false;
+      btn.innerHTML = '🚀 דחיפת נתונים למסד הנתונים';
+      alert(`שגיאה:\n${errMsg || 'שגיאה לא ידועה'}\n\nוודא שה-Rules מאפשרים כתיבה.`);
+    }
+  });
+}
+
+/* Matching helper for new students only (respects existing mentor load) */
+function _matchStudents(students, allMentors, load){
+  const byFaculty={};
+  allMentors.forEach(m=>{ if(!byFaculty[m.prog])byFaculty[m.prog]=[]; byFaculty[m.prog].push(m); });
+  const arMentors=allMentors.filter(m=>/ערבית/i.test(m.lang));
+  const ldMentors=allMentors.filter(m=>m.ld===true);
+  function pick(pool,exc){ const c=pool.filter(m=>!exc.includes(m.e)); if(!c.length)return null; c.sort((a,b)=>(load[a.e]||0)-(load[b.e]||0)); return c[0]; }
+  students.forEach(s=>{
+    const p=pick(byFaculty[s.prog]||[],s.mentors);
+    if(p){s.mentors.push(p.e);load[p.e]=(load[p.e]||0)+1;}
+    if(/ערבית/i.test(s.lang)){const a=pick(arMentors,s.mentors);if(a){s.mentors.push(a.e);load[a.e]=(load[a.e]||0)+1;}}
+    if(s.ld){const l=pick(ldMentors,s.mentors);if(l){s.mentors.push(l.e);load[l.e]=(load[l.e]||0)+1;}}
+  });
+}
+</script>
+</body>
+</html>

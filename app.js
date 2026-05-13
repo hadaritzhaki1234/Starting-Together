@@ -1,16 +1,7 @@
 'use strict';
 
-/* ══ PROGRAM → MENTOR mapping ══ */
-const PROG_MENTOR = {
-  'הנדסת תעשייה וניהול':  'hadar.itzhaki@afeka.ac.il',
-  'הנדסת חשמל':            'daniel.cohen@afeka.ac.il',
-  'הנדסת תוכנה':           'noa.levi@afeka.ac.il',
-  'מדעי הנתונים':          'yoav.mizrahi@afeka.ac.il',
-  'הנדסה מכנית':           'maya.peretz@afeka.ac.il',
-  'הנדסה רפואית':          'itai.barak@afeka.ac.il',
-  'הנדסת מערכות מידע':    'shir.alon@afeka.ac.il',
-  'מדעי המחשב':            'royi.gold@afeka.ac.il',
-};
+/* Program→mentor mapping intentionally empty — assignments come from Firebase via admin panel */
+const PROG_MENTOR = {};
 
 /* ══ AUTH ══ */
 function getUser(){return JSON.parse(localStorage.getItem('currentUser')||'null');}
@@ -28,16 +19,27 @@ function requireStudent(){
   return u;
 }
 
-/* returns mentor email to use as data namespace */
+/* Returns the PRIMARY mentor email (used as Firebase namespace) */
 function getMentorEmail(){
   const u=getUser();
   if(!u)return null;
   if(u.isMentor)return u.e;
+  /* Dynamic assignment: student.mentors[0] is the primary (faculty) mentor */
+  if(u.mentors&&u.mentors.length)return u.mentors[0];
   return PROG_MENTOR[u.prog]||null;
+}
+/* Returns ALL mentor emails assigned to this student */
+function getMentorEmails(){
+  const u=getUser();
+  if(!u)return[];
+  if(u.isMentor)return[u.e];
+  if(u.mentors&&u.mentors.length)return u.mentors;
+  const single=PROG_MENTOR[u.prog];
+  return single?[single]:[];
 }
 function getMentorObj(){
   const email=getMentorEmail();
-  return email?DB_MENTORS.find(m=>m.e===email):null;
+  return email?(getMentorsDB().find(m=>m.e===email)||null):null;
 }
 function getMentorStudentCount(){
   const u=getUser();
@@ -145,10 +147,20 @@ const CHAT_GAPS=[
 function buildChats(){
   const u=getUser();
   if(!u||!u.isMentor)return[]; // students never build chats — they read mentor's list
-  const myStudents=DB_STUDENTS.filter(s=>s.prog===u.prog).slice(0,20);
+  const allStudents=getStudentsDB();
+  /* If admin panel assigned students explicitly, use that list; else fall back to program */
+  let myStudents;
+  if(u.students&&u.students.length){
+    myStudents=allStudents.filter(s=>u.students.includes(s.id)||u.students.includes(String(s.id)));
+  } else {
+    myStudents=allStudents.filter(s=>s.prog===u.prog);
+  }
+  myStudents=myStudents.slice(0,20);
   return myStudents.map((s,i)=>{
+    const ini=s.ini||(s.n.split(' ').slice(0,2).map(w=>w[0]).join(''));
+    const color=s.color||_PALETTE[i%_PALETTE.length];
     const prev=CHAT_PREVIEWS[i%CHAT_PREVIEWS.length];
-    return{_v:CHATS_V,id:s.id,name:s.n,initials:s.ini,color:s.color,
+    return{_v:CHATS_V,id:s.id,name:s.n,initials:ini,color,
       online:i%5===0,hoursAgo:CHAT_GAPS[i]||0,preview:prev,
       prog:s.prog,yr:s.yr,lang:s.lang,ld:s.ld,
       msgs:[{t:prev,sent:false,from:'student',time:'10:30'}]};

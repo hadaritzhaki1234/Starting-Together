@@ -65,59 +65,93 @@ body{font-family:'Heebo',system-ui,sans-serif;direction:rtl;min-height:100vh;bac
     <div class="spinner" id="spin"></div>
   </button>
 
-  <div class="hint">
-    <strong>דוגמה — חונך/ת:</strong><br>
-    <code>hadar.itzhaki@afeka.ac.il</code> / <code>Hi318852!</code><br>
-    <strong>דוגמה — סטודנט/ית:</strong><br>
-    <code>ali.gabay001@afeka.ac.il</code> / <code>AG300839!</code>
+  <div class="hint" id="db-status-hint">
+    <span id="db-status-text">⏳ מתחבר ל-Firebase וטוען משתמשים…</span>
   </div>
 
   <div class="back"><a href="index.html">← חזרה לדף הבית</a></div>
 </div>
 
+<script src="https://www.gstatic.com/firebasejs/12.13.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/12.13.0/firebase-database-compat.js"></script>
 <script src="db.js"></script>
+<script src="firebase-config.js"></script>
 <script>
 'use strict';
-// If already logged in go straight to dashboard
-if(localStorage.getItem('currentUser')){window.location.href='dashboard.html';}
+
+/* ── Hardcoded admin credentials ── */
+const ADMIN_USER = { e:'admin@mty.ac.il', p:'Admin@2024', isAdmin:true, n:'מנהל מערכת' };
+
+// If already logged in go straight to the right page
+const _cu = localStorage.getItem('currentUser');
+if(_cu){
+  try {
+    const _u=JSON.parse(_cu);
+    window.location.href = _u.isAdmin ? 'admin.html' : _u.isMentor ? 'dashboard.html' : 'student.html';
+  } catch(e){ localStorage.removeItem('currentUser'); }
+}
+
+/* ── Load Firebase DB before enabling login ── */
+const _loginBtn = document.getElementById('login-btn');
+_loginBtn.disabled = true;
+
+function _onDBReady(result){
+  _loginBtn.disabled = false;
+  const hint = document.getElementById('db-status-text');
+  if(result){
+    const m = result.mentors||getMentorsDB();
+    const s = result.students||getStudentsDB();
+    hint.textContent = `✅ מוכן — ${m.length} חונכים, ${s.length} סטודנטים`;
+  } else if(getMentorsDB().length){
+    /* cached from a previous session */
+    hint.textContent = `✅ נטען מהמטמון — ${getMentorsDB().length} חונכים, ${getStudentsDB().length} סטודנטים`;
+  } else {
+    hint.innerHTML = '⚠️ לא נמצאו משתמשים — <a href="admin.html" style="color:var(--teal)">העלה קובץ Excel בפאנל הניהול</a>';
+  }
+}
+
+document.addEventListener('DOMContentLoaded', ()=>{
+  /* If Firebase isn't available yet, fall back to cache after 6s */
+  const _fbTimeout = setTimeout(()=> _onDBReady(null), 6000);
+  if(typeof fbLoadDB==='function'){
+    fbLoadDB(result=>{ clearTimeout(_fbTimeout); _onDBReady(result); });
+  } else {
+    clearTimeout(_fbTimeout); _onDBReady(null);
+  }
+});
 
 function doLogin(){
   const em=document.getElementById('em').value.trim().toLowerCase();
   const pw=document.getElementById('pw').value.trim();
   const errEl=document.getElementById('err');
   errEl.classList.remove('show');
-
   if(!em||!pw){errEl.textContent='אנא מלאו את כל השדות';errEl.classList.add('show');return;}
 
-  // show spinner
   const btn=document.getElementById('login-btn');
   btn.disabled=true;
   document.getElementById('btn-text').style.display='none';
   document.getElementById('spin').style.display='block';
 
   setTimeout(()=>{
-    // Check mentors first, then students
-    let user=DB_MENTORS.find(u=>u.e.toLowerCase()===em && u.p===pw);
-    if(user){
-      localStorage.setItem('currentUser',JSON.stringify(user));
-      window.location.href='dashboard.html';
-      return;
+    /* 1 — admin */
+    if(em===ADMIN_USER.e && pw===ADMIN_USER.p){
+      localStorage.setItem('currentUser',JSON.stringify(ADMIN_USER));
+      window.location.href='admin.html'; return;
     }
-    user=DB_STUDENTS.find(u=>u.e.toLowerCase()===em && u.p===pw);
-    if(user){
-      localStorage.setItem('currentUser',JSON.stringify(user));
-      window.location.href='student.html';
-      return;
-    }
-    {
-      errEl.textContent='שם משתמש או סיסמה שגויים';
-      errEl.classList.add('show');
-      btn.disabled=false;
-      document.getElementById('btn-text').style.display='';
-      document.getElementById('spin').style.display='none';
-      document.getElementById('pw').value='';
-      document.getElementById('pw').focus();
-    }
+    /* 2 — mentors (dynamic DB first, then hardcoded) */
+    let user=getMentorsDB().find(u=>u.e.toLowerCase()===em && u.p===pw);
+    if(user){ localStorage.setItem('currentUser',JSON.stringify(user)); window.location.href='dashboard.html'; return; }
+    /* 3 — students */
+    user=getStudentsDB().find(u=>u.e.toLowerCase()===em && u.p===pw);
+    if(user){ localStorage.setItem('currentUser',JSON.stringify(user)); window.location.href='student.html'; return; }
+
+    errEl.textContent='שם משתמש או סיסמה שגויים';
+    errEl.classList.add('show');
+    btn.disabled=false;
+    document.getElementById('btn-text').style.display='';
+    document.getElementById('spin').style.display='none';
+    document.getElementById('pw').value='';
+    document.getElementById('pw').focus();
   },500);
 }
 </script>

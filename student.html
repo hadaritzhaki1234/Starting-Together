@@ -33,9 +33,9 @@
 
 <div class="dash-body">
 
-  <!-- COL 1 RIGHT: Chat with mentor -->
+  <!-- COL 1 RIGHT: Chat with mentor(s) -->
   <div class="dash-col">
-    <div class="col-head" style="cursor:default;pointer-events:none">💬 שיחה עם החונך/ת שלי</div>
+    <div class="col-head" style="cursor:default;pointer-events:none">💬 החונכים שלי</div>
     <div class="col-body" id="chats-list"></div>
   </div>
 
@@ -95,46 +95,60 @@ const U = requireStudent();
 if(!U) throw new Error('no user');
 populateHeader();
 
-const mentor      = getMentorObj();
-const mentorChats = getData('chats');          // mentor's full student-chat list
-const allFaqs     = getData('faqs');
-let   allAnns     = getData('anns');
+/* ── State ── */
+let allFaqs = getData('faqs');
+let allAnns = getData('anns');
 
-// Find THIS student's own chat entry in the mentor's list
-let myChat = mentorChats.find(c=>c.id===U.id)||null;
-// If mentor data not yet seeded, create a placeholder entry
-if(!myChat && mentor){
-  const ini=U.n.split(' ').slice(0,2).map(w=>w[0]).join('');
-  myChat={_v:CHATS_V,id:U.id,name:U.n,initials:ini,color:'#3EA9A3',
-    online:false,hoursAgo:0,preview:'',prog:U.prog,yr:U.yr,msgs:[]};
-  mentorChats.push(myChat);
-  setData('chats',mentorChats);
+/*
+  sessions = array of { mentorEmail, mentor, chats, myChat }
+  One entry per assigned mentor (1–3).
+  activeEmail = which session is currently open in the modal.
+*/
+let sessions    = [];
+let activeEmail = null;
+
+/* Build an empty session record for a mentor email */
+function _makeSession(email){
+  return { email, mentor: getMentorObjByEmail(email), chats:[], myChat:null };
 }
 
-/* ── MENTOR CHAT (single entry) ── */
+/* Primary mentor namespace (for faqs/anns) */
+function _primaryEmail(){ return getMentorEmail(); }
+
+/* ── RENDER: mentor cards in col-1 ── */
 function renderChats(){
-  const el=document.getElementById('chats-list');
-  if(!mentor){el.innerHTML='<div class="no-results">לא נמצא חונך/ת עבורך</div>';return;}
-  if(!myChat){el.innerHTML='<div class="no-results">אין שיחות</div>';return;}
-  const ini=mentor.n.split(' ').slice(0,2).map(w=>w[0]).join('');
-  el.innerHTML=`
-    <div style="text-align:center;padding:12px 0 8px">
-      <div class="avatar" style="background:#3EA9A3;width:56px;height:56px;font-size:1.1rem;margin:0 auto 8px">
-        ${x(ini)}<span class="avatar-online"></span>
+  const el = document.getElementById('chats-list');
+  if(!sessions.length){
+    el.innerHTML='<div class="no-results">לא נמצא חונך/ת עבורך</div>'; return;
+  }
+  el.innerHTML = sessions.map(s => {
+    const m   = s.mentor;
+    const mc  = s.myChat;
+    const ini = m ? m.n.split(' ').slice(0,2).map(w=>w[0]).join('') : '?';
+    const unread = mc ? (mc.mentorUnread||0) : 0;
+    const preview = mc ? (mc.preview||'לחצו לפתיחת השיחה') : 'טוען…';
+    return `
+    <div style="border:1px solid var(--border);border-radius:var(--r);padding:12px;margin-bottom:10px;background:#fff">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+        <div class="avatar" style="background:#3EA9A3;width:40px;height:40px;font-size:.8rem;flex-shrink:0">
+          ${x(ini)}
+        </div>
+        <div>
+          <div style="font-weight:700;font-size:.92rem">${m?x(m.n):'חונך/ת'}</div>
+          <div style="font-size:.72rem;color:var(--muted)">${m?x(m.role||'חונך/ת'):''} · שנה ${m?m.yr:''}</div>
+        </div>
+        ${unread>0?`<span class="unread-badge" style="margin-right:auto">${unread}</span>`:''}
       </div>
-      <div style="font-weight:700;font-size:1rem">${x(mentor.n)}</div>
-      <div style="font-size:.78rem;color:var(--muted);margin-top:2px">${x(mentor.role||'חונך/ת')} · שנה ${mentor.yr||''}</div>
-    </div>
-    <div class="chat-item" onclick="openChat()" style="margin-top:8px">
-      ${(myChat.mentorUnread||0)>0?`<div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;color:var(--red);font-size:.8rem;font-weight:700">
-        <span class="chat-new-dot"></span> ${myChat.mentorUnread} הודעה חדשה מהחונך/ת
+      ${unread>0?`<div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;color:var(--red);font-size:.78rem;font-weight:700">
+        <span class="chat-new-dot"></span> ${unread} הודעה חדשה
       </div>`:''}
-      <div class="chat-preview" style="font-size:.85rem;margin-bottom:8px">${x(myChat.preview||'לחצו לפתיחת השיחה')}</div>
-      <button class="btn-chat">💬 פתיחת שיחה</button>
+      <div style="font-size:.82rem;color:var(--muted);margin-bottom:8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${x(preview)}</div>
+      <button class="btn-chat" onclick="openChat('${s.email}')">💬 פתיחת שיחה</button>
     </div>`;
+  }).join('');
 }
 
-/* ── FAQS read-only ── */
+/* ── FAQS ── */
 function renderFaqs(items){
   const el=document.getElementById('faq-list');
   if(!items||!items.length){el.innerHTML='<div class="no-results">אין שאלות נפוצות עדיין</div>';return;}
@@ -149,7 +163,7 @@ function filterFaqs(q){
   renderFaqs(f?allFaqs.filter(i=>i.q.toLowerCase().includes(f)||i.a.toLowerCase().includes(f)):allFaqs);
 }
 
-/* ── ANNOUNCEMENTS: title only → click to reveal + view count ── */
+/* ── ANNOUNCEMENTS ── */
 function renderAnns(items){
   const el=document.getElementById('ann-list');
   if(!items||!items.length){el.innerHTML='<div class="no-results">אין הודעות עדיין</div>';return;}
@@ -163,99 +177,138 @@ function renderAnns(items){
       </div>
     </div>`).join('');
 }
-
 function expandAnn(id){
-  const bodyEl = document.getElementById(`ann-body-${id}`);
-  const hint   = document.getElementById(`ann-hint-${id}`);
-  const card   = document.getElementById(`ann-${id}`);
-  if(!bodyEl || bodyEl.style.display!=='none') return; // already open
-
-  bodyEl.style.display = 'block';
-  if(hint)  hint.style.display  = 'none';
-  if(card){ card.classList.remove('ann-card-collapsed');
-            card.classList.add('ann-card-revealed');
-            card.onclick = null; }
-
-  // Increment view count once per student
-  const ann = allAnns.find(a=>a.id===id);
-  if(!ann) return;
-  if(!ann.viewedBy) ann.viewedBy = [];
+  const bodyEl=document.getElementById(`ann-body-${id}`);
+  const hint=document.getElementById(`ann-hint-${id}`);
+  const card=document.getElementById(`ann-${id}`);
+  if(!bodyEl||bodyEl.style.display!=='none')return;
+  bodyEl.style.display='block';
+  if(hint)hint.style.display='none';
+  if(card){card.classList.remove('ann-card-collapsed');card.classList.add('ann-card-revealed');card.onclick=null;}
+  const ann=allAnns.find(a=>a.id===id);
+  if(!ann)return;
+  if(!ann.viewedBy)ann.viewedBy=[];
   if(!ann.viewedBy.includes(U.id)){
-    ann.viewedBy.push(U.id);
-    ann.views = (ann.views||0) + 1;
-    setData('anns', allAnns);
+    ann.viewedBy.push(U.id);ann.views=(ann.views||0)+1;
+    /* view counts go to primary mentor namespace */
+    const pe=_primaryEmail();
+    if(pe) fbWritePath(`mty/${fbSanitize(pe)}/anns`, allAnns);
   }
 }
-
 function filterAnns(q){
   const f=q.trim().toLowerCase();
   renderAnns(f?allAnns.filter(a=>(a.title||'').toLowerCase().includes(f)||a.body.toLowerCase().includes(f)):allAnns);
 }
 
-/* ── CHAT MODAL ── */
+/* ── NOTIFICATION DOT ── */
 function _updateNotifDot(){
   const dot=document.querySelector('.notif-dot');
   if(!dot)return;
-  dot.classList.toggle('active',(myChat&&(myChat.mentorUnread||0)>0));
+  const hasUnread=sessions.some(s=>s.myChat&&(s.myChat.mentorUnread||0)>0);
+  dot.classList.toggle('active',hasUnread);
 }
-function openChat(){
-  if(!myChat)return;
-  document.getElementById('m-chat-name').textContent=`שיחה עם ${mentor?mentor.n:'החונך/ת'}`;
-  document.getElementById('m-chat-meta').textContent=`${mentor?mentor.role||'חונך/ת':''} · שנה ${mentor?mentor.yr:''}`;
-  renderMsgs(myChat);
+
+/* ── CHAT MODAL ── */
+function openChat(email){
+  const s=sessions.find(s=>s.email===email);
+  if(!s||!s.myChat)return;
+  activeEmail=email;
+  document.getElementById('m-chat-name').textContent=`שיחה עם ${s.mentor?s.mentor.n:'החונך/ת'}`;
+  document.getElementById('m-chat-meta').textContent=`${s.mentor?s.mentor.role||'חונך/ת':''} · שנה ${s.mentor?s.mentor.yr:''}`;
+  renderMsgs(s.myChat);
   openModal('m-chat');
-  myChat.mentorUnread=0;   // student read the mentor's messages
-  setData('chats',mentorChats);
-  renderChats();            // refresh to hide the dot
+  /* Mark as read */
+  s.myChat.mentorUnread=0;
+  fbWritePath(`mty/${fbSanitize(email)}/chats`, s.chats);
+  renderChats();
   _updateNotifDot();
   setTimeout(()=>document.getElementById('chat-in').focus(),200);
 }
 function renderMsgs(c){
   const el=document.getElementById('chat-msgs');
   el.innerHTML=(c.msgs||[]).map(m=>{
-    // Student perspective: messages from 'student' → sent bubble; from 'mentor' → recv bubble
     const cls=m.from?(m.from==='student'?'sent':'recv'):(m.sent?'recv':'sent');
-    return`<div>
-      <div class="bubble ${cls}">${x(m.t)}</div>
-      <div class="btime ${cls}">${m.time}</div>
-    </div>`;}).join('');
+    return`<div><div class="bubble ${cls}">${x(m.t)}</div><div class="btime ${cls}">${m.time}</div></div>`;
+  }).join('');
   el.scrollTop=el.scrollHeight;
 }
 function sendMsg(){
   const inp=document.getElementById('chat-in');
   const txt=inp.value.trim();
-  if(!txt||!myChat)return;
+  if(!txt||!activeEmail)return;
+  const s=sessions.find(s=>s.email===activeEmail);
+  if(!s||!s.myChat)return;
   const now=new Date();
   const t=`${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
-  myChat.msgs.push({t:txt,sent:true,from:'student',time:t});
-  myChat.preview=txt;
-  myChat.unread=(myChat.unread||0)+1;  // notify mentor
+  s.myChat.msgs.push({t:txt,from:'student',time:t});
+  s.myChat.preview=txt;
+  s.myChat.unread=(s.myChat.unread||0)+1;
   inp.value='';
-  setData('chats',mentorChats);
-  renderMsgs(myChat);
+  fbWritePath(`mty/${fbSanitize(activeEmail)}/chats`, s.chats);
+  renderMsgs(s.myChat);
 }
 
-renderChats();
+/* ── INIT: ensure student has an entry in each mentor's chat list ── */
+function _ensureMyChat(s, chatsFromFirebase){
+  s.chats = chatsFromFirebase || [];
+  s.myChat = s.chats.find(c=>c.id===U.id)||null;
+  if(!s.myChat){
+    const ini=U.n.split(' ').slice(0,2).map(w=>w[0]).join('');
+    s.myChat={_v:CHATS_V,id:U.id,name:U.n,initials:ini,color:'#3EA9A3',
+      online:false,hoursAgo:0,preview:'',prog:U.prog,yr:U.yr,msgs:[]};
+    s.chats.push(s.myChat);
+    fbWritePath(`mty/${fbSanitize(s.email)}/chats`, s.chats);
+  }
+}
+
+/* ── BOOT ── */
 renderFaqs(allFaqs);
 renderAnns(allAnns);
-_updateNotifDot();
+document.getElementById('chats-list').innerHTML='<div class="no-results" style="color:var(--muted)">טוען…</div>';
 
-/* ── Firebase: sync FAQs/anns, then real-time listen for chat messages ── */
-fbSync(['faqs','anns'], upd=>{
-  if(upd.faqs){allFaqs=upd.faqs; renderFaqs(allFaqs);}
-  if(upd.anns){allAnns=upd.anns; renderAnns(allAnns);}
-});
-fbListen('chats', updatedChats=>{
-  /* Find this student's entry and refresh */
-  const fresh=updatedChats.find(c=>c.id===U.id);
-  if(!fresh)return;
-  const idx=mentorChats.findIndex(c=>c.id===U.id);
-  if(idx>=0)mentorChats[idx]=fresh; else mentorChats.push(fresh);
-  Object.assign(myChat,fresh);
+/* Build session list from assigned mentors */
+const mentorEmails = getMentorEmails();
+sessions = mentorEmails.map(_makeSession);
+
+/* Load each mentor's chat namespace from Firebase, then set up live listeners */
+let pending = sessions.length || 1;
+const _dec = () => { if(--pending===0) _allLoaded(); };
+
+function _allLoaded(){
   renderChats();
   _updateNotifDot();
-  if(!document.getElementById('m-chat').classList.contains('hidden'))renderMsgs(myChat);
-});
+  /* Real-time listeners — one per mentor */
+  sessions.forEach(s=>{
+    fbListenPath(`mty/${fbSanitize(s.email)}/chats`, updated=>{
+      const fresh=updated.find(c=>c.id===U.id);
+      if(!fresh)return;
+      const idx=s.chats.findIndex(c=>c.id===U.id);
+      if(idx>=0)s.chats[idx]=fresh; else s.chats.push(fresh);
+      s.myChat=s.chats.find(c=>c.id===U.id);
+      renderChats();
+      _updateNotifDot();
+      if(activeEmail===s.email && !document.getElementById('m-chat').classList.contains('hidden'))
+        renderMsgs(s.myChat);
+    });
+  });
+}
+
+if(!sessions.length){ _allLoaded(); }
+else {
+  sessions.forEach(s=>{
+    fbSyncPath(`mty/${fbSanitize(s.email)}/chats`, data=>{
+      _ensureMyChat(s, data);
+      _dec();
+    });
+  });
+}
+
+/* Faqs & anns from primary mentor namespace */
+const pe = _primaryEmail();
+if(pe){
+  fbSyncPath(`mty/${fbSanitize(pe)}/faqs`, data=>{ if(data){allFaqs=data;renderFaqs(allFaqs);} });
+  fbSyncPath(`mty/${fbSanitize(pe)}/anns`, data=>{ if(data){allAnns=data;renderAnns(allAnns);} });
+}
 </script>
 </body>
 </html>

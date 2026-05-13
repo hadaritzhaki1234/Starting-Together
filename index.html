@@ -64,19 +64,22 @@ body{font-family:'Heebo',system-ui,sans-serif;direction:rtl;background:var(--bg)
 <body>
 <nav class="w-nav">
   <div class="w-logo">מתחילים <span>יחד</span></div>
-  <a href="login.html" class="w-nav-btn">כניסה למערכת</a>
+  <div style="display:flex;align-items:center;gap:10px">
+    <a href="admin.html" class="w-nav-btn" style="font-size:.78rem;padding:6px 14px;opacity:.75">⚙️ ניהול</a>
+    <a href="login.html" class="w-nav-btn">כניסה למערכת</a>
+  </div>
 </nav>
 
 <section class="w-hero">
   <div class="w-badge">🎓 פלטפורמת מנטורינג לסטודנטים</div>
-  <h1>ליווי אישי.<br><span>התקדמות משותפת.</span></h1>
+  <h1>ליווי אישי<br><span>התקדמות משותפת</span></h1>
   <p>מתחילים יחד היא פלטפורמה המחברת בין סטודנטים ותיקים לחדשים — לתמיכה, הכוונה ושיתוף ידע לאורך כל הדרך.</p>
   <div class="hero-btns">
     <a href="login.html" class="btn-cta">מתחילים עכשיו ←</a>
   </div>
   <div class="w-stats">
-    <div><div class="stat-num">500</div><div class="stat-lbl">סטודנטים רשומים</div></div>
-    <div><div class="stat-num">10</div><div class="stat-lbl">חונכים פעילים</div></div>
+    <div><div class="stat-num" id="idx-students">—</div><div class="stat-lbl">סטודנטים רשומים</div></div>
+    <div><div class="stat-num" id="idx-mentors">—</div><div class="stat-lbl">חונכים פעילים</div></div>
     <div><div class="stat-num">98%</div><div class="stat-lbl">שביעות רצון</div></div>
   </div>
 </section>
@@ -135,6 +138,23 @@ body{font-family:'Heebo',system-ui,sans-serif;direction:rtl;background:var(--bg)
 </section>
 
 <footer class="w-footer">© <span id="yr"></span> <span>מתחילים יחד</span> — אפקה, המכללה האקדמית להנדסה בתל-אביב</footer>
-<script>document.getElementById('yr').textContent=new Date().getFullYear();</script>
+
+<script src="https://www.gstatic.com/firebasejs/12.13.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/12.13.0/firebase-database-compat.js"></script>
+<script src="db.js"></script>
+<script src="firebase-config.js"></script>
+<script>
+document.getElementById('yr').textContent = new Date().getFullYear();
+
+/* Load real user counts from Firebase */
+fbLoadDB(result => {
+  const mentors  = (result && result.mentors)  || getMentorsDB();
+  const students = (result && result.students) || getStudentsDB();
+  const mEl = document.getElementById('idx-mentors');
+  const sEl = document.getElementById('idx-students');
+  if(mEl) mEl.textContent = mentors.length  || '—';
+  if(sEl) sEl.textContent = students.length || '—';
+});
+</script>
 </body>
 </html>
