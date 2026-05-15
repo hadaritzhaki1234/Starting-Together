@@ -74,6 +74,7 @@ body{font-family:'Heebo',system-ui,sans-serif;direction:rtl;min-height:100vh;bac
 
 <script src="https://www.gstatic.com/firebasejs/12.13.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/12.13.0/firebase-database-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/12.13.0/firebase-auth-compat.js"></script>
 <script src="db.js"></script>
 <script src="firebase-config.js"></script>
 <script>
@@ -136,14 +137,23 @@ function doLogin(){
     /* 1 — admin */
     if(em===ADMIN_USER.e && pw===ADMIN_USER.p){
       localStorage.setItem('currentUser',JSON.stringify(ADMIN_USER));
-      window.location.href='admin.html'; return;
+      fbSignIn(em, pw, ()=>{ window.location.href='admin.html'; });
+      return;
     }
     /* 2 — mentors (dynamic DB first, then hardcoded) */
     let user=getMentorsDB().find(u=>u.e.toLowerCase()===em && u.p===pw);
-    if(user){ localStorage.setItem('currentUser',JSON.stringify(user)); window.location.href='dashboard.html'; return; }
+    if(user){
+      localStorage.setItem('currentUser',JSON.stringify(user));
+      fbSignIn(em, pw, ()=>{ window.location.href='dashboard.html'; });
+      return;
+    }
     /* 3 — students */
     user=getStudentsDB().find(u=>u.e.toLowerCase()===em && u.p===pw);
-    if(user){ localStorage.setItem('currentUser',JSON.stringify(user)); window.location.href='student.html'; return; }
+    if(user){
+      localStorage.setItem('currentUser',JSON.stringify(user));
+      fbSignIn(em, pw, ()=>{ window.location.href='student.html'; });
+      return;
+    }
 
     errEl.textContent='שם משתמש או סיסמה שגויים';
     errEl.classList.add('show');

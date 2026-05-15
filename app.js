@@ -6,7 +6,11 @@ const PROG_MENTOR = {};
 /* ══ AUTH ══ */
 function getUser(){return JSON.parse(localStorage.getItem('currentUser')||'null');}
 function requireAuth(){const u=getUser();if(!u){window.location.href='login.html';return null;}return u;}
-function logout(){localStorage.removeItem('currentUser');window.location.href='login.html';}
+function logout(){
+  localStorage.removeItem('currentUser');
+  if(typeof fbSignOut==='function') fbSignOut(()=>{ window.location.href='login.html'; });
+  else window.location.href='login.html';
+}
 
 function requireMentor(){
   const u=requireAuth();

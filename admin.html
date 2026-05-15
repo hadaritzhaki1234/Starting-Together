@@ -178,6 +178,7 @@ body{font-family:'Heebo',system-ui,sans-serif;direction:rtl;background:var(--bg)
 <script src="https://unpkg.com/xlsx/dist/xlsx.full.min.js"></script>
 <script src="https://www.gstatic.com/firebasejs/12.13.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/12.13.0/firebase-database-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/12.13.0/firebase-auth-compat.js"></script>
 <script src="db.js"></script>
 <script src="firebase-config.js"></script>
 <script>
@@ -205,6 +206,7 @@ function adminLogin(){
   err.classList.remove('show');
   if(em===ADMIN.e && pw===ADMIN.p){
     document.getElementById('hdr-user').textContent='מנהל מערכת';
+    fbSignIn(em, pw, ()=>{}); /* sign into Firebase Auth silently */
     showScreen('screen-upload');
   } else {
     err.classList.add('show');

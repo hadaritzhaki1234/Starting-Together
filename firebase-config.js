@@ -256,6 +256,61 @@ function fbLoadDB(cb){
   }, () => cb(null));
 }
 
+/* ════════════════════════════════════════════════════════
+   FIREBASE AUTH — sign-in / sign-out helpers
+   ════════════════════════════════════════════════════════ */
+
+/*
+  fbSignIn(email, password, cb)
+  ─────────────────────────────
+  Tries to sign the user into Firebase Auth.
+  On first-ever login the account won't exist yet → we create it automatically.
+  cb(true)  — auth succeeded (or gracefully skipped)
+  cb(false) — hard failure (shouldn't happen; kept for safety)
+*/
+function fbSignIn(email, password, cb){
+  if(!firebase.auth){
+    console.warn('[Auth] firebase.auth not available — skipping sign-in');
+    cb(true); return;
+  }
+  firebase.auth().signInWithEmailAndPassword(email, password)
+    .then(() => {
+      console.log('%c[Auth] ✅ Firebase sign-in OK:', 'color:#16a34a;font-weight:bold', email);
+      cb(true);
+    })
+    .catch(err => {
+      if(err.code === 'auth/user-not-found' || err.code === 'auth/invalid-credential' || err.code === 'auth/invalid-email'){
+        /* First-time user — create the Firebase Auth account silently */
+        firebase.auth().createUserWithEmailAndPassword(email, password)
+          .then(() => {
+            console.log('%c[Auth] 🆕 Firebase account created:', 'color:#0284c7;font-weight:bold', email);
+            cb(true);
+          })
+          .catch(e2 => {
+            /* createUser can fail (e.g. weak password) — log but don't block login */
+            console.warn('[Auth] createUser failed (non-blocking):', e2.message);
+            cb(true);
+          });
+      } else {
+        /* Wrong password or other error — still non-blocking for app login */
+        console.warn('[Auth] signIn error (non-blocking):', err.message);
+        cb(true);
+      }
+    });
+}
+
+/*
+  fbSignOut(cb)
+  ─────────────
+  Signs the current Firebase Auth user out, then calls cb().
+*/
+function fbSignOut(cb){
+  if(!firebase.auth){ if(cb) cb(); return; }
+  firebase.auth().signOut()
+    .then(() => { console.log('[Auth] signed out'); if(cb) cb(); })
+    .catch(() => { if(cb) cb(); });
+}
+
 /* Push admin DB to Firebase in two writes — cb(true | false) */
 function fbPushAdminDB(mentors, students, cb){
   if(!window.FBDB){ cb(false, 'Firebase לא מחובר'); return; }
