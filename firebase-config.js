@@ -128,12 +128,8 @@ function fbSync(keys, cb){
         if(raw){
           const arr = JSON.parse(raw);
           if(Array.isArray(arr) && arr.length){
-            if(key === 'chats' && typeof CHATS_V !== 'undefined' && arr[0]._v !== CHATS_V){
-              console.log(`[Firebase] ⚠️  chats גרסה ישנה — מדלג, ייבנה מחדש`);
-            } else {
-              localStorage.setItem(_storageKey(key), raw);
-              result[key] = arr;
-            }
+            localStorage.setItem(_storageKey(key), raw);
+            result[key] = arr;
           }
         } else {
           console.log(`[Firebase] ℹ️  "${key}" — ריק ב-Firebase`);
@@ -145,27 +141,23 @@ function fbSync(keys, cb){
 }
 
 /* ── fbSeedIfEmpty: called once on mentor login ── */
+/* Only seeds a key if it is completely absent from Firebase — never overwrites existing data */
 function fbSeedIfEmpty(){
   const root = _fbRoot();
   if(!root) return;
   ['chats','faqs','anns'].forEach(key => {
     FBDB.ref(`${root}/${key}`).once('value', snap => {
-      let needsSeed = !snap.val();
-      if(!needsSeed && key==='chats'){
-        try{
-          const arr=JSON.parse(snap.val());
-          if(!arr||!arr[0]||arr[0]._v!==CHATS_V) needsSeed=true;
-        }catch(e){ needsSeed=true; }
-      }
-      if(needsSeed){
-        const data=getData(key);
-        if(data&&data.length){
-          FBDB.ref(`${root}/${key}`).set(JSON.stringify(data))
-            .then(()=>console.log(`%c[Firebase] 🌱 זרע "${key}" (${data.length} פריטים)`, 'color:#16a34a'))
-            .catch(e=>console.warn('[Firebase] שגיאת seeding:',e.message));
-        }
-      } else {
+      const existing = snap.val();
+      if(existing){
         console.log(`[Firebase] ℹ️  "${key}" כבר קיים ב-Firebase — לא מדרס`);
+        return;
+      }
+      /* Truly empty — seed with local defaults */
+      const data = getData(key);
+      if(data && data.length){
+        FBDB.ref(`${root}/${key}`).set(JSON.stringify(data))
+          .then(()=>console.log(`%c[Firebase] 🌱 זרע "${key}" (${data.length} פריטים)`, 'color:#16a34a'))
+          .catch(e=>console.warn('[Firebase] שגיאת seeding:',e.message));
       }
     });
   });

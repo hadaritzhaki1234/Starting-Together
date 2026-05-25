@@ -188,8 +188,10 @@ body{font-family:'Heebo',system-ui,sans-serif;direction:rtl;background:var(--bg)
 const ADMIN = { e:'admin@mty.ac.il', p:'Admin@2024' };
 
 /* ══ State ══ */
-let _parsedMentors = [];
+let _parsedMentors  = [];   /* full merged set — what gets pushed to Firebase */
 let _parsedStudents = [];
+let _previewMentors = [];   /* only the rows from the uploaded file — shown in preview table */
+let _previewStudents= [];
 let _currentTab = 'students';
 
 /* ══ Screen helpers ══ */
@@ -391,6 +393,12 @@ function parseWorkbook(wb){
     _parsedMentors  = mergedMentors;
     _parsedStudents = mergedStudents;
 
+    /* Preview shows only what came from the uploaded file (with their new assignments) */
+    const uploadedStudentEmails = new Set(newStudents.map(s=>s.e));
+    const uploadedMentorEmails  = new Set(newMentors.map(m=>m.e));
+    _previewStudents = mergedStudents.filter(s => uploadedStudentEmails.has(s.e));
+    _previewMentors  = mergedMentors.filter(m => uploadedMentorEmails.has(m.e));
+
     const parts = [];
     if(newMentors.length)  parts.push(`${newMentors.length} חונכים מהקובץ`);
     if(newStudents.length) parts.push(`${newStudents.length} סטודנטים מהקובץ`);
@@ -461,24 +469,24 @@ function runMatching(mentors, students){
 
 /* ══ Preview ══ */
 function buildPreview(){
-  /* Stats */
+  /* Stats — always based on full merged set (what will be in DB after push) */
   const unassigned = _parsedStudents.filter(s=>!s.mentors.length);
   const mentorsNoStudents = _parsedMentors.filter(m=>!m.students.length);
-  const needAr = _parsedStudents.filter(s=>/ערבית/i.test(s.lang));
-  const needLd = _parsedStudents.filter(s=>s.ld);
-  const got2   = _parsedStudents.filter(s=>s.mentors.length>=2);
-  const got3   = _parsedStudents.filter(s=>s.mentors.length===3);
+  const needAr = _previewStudents.filter(s=>/ערבית/i.test(s.lang));
+  const needLd = _previewStudents.filter(s=>s.ld);
+  const got2   = _previewStudents.filter(s=>s.mentors.length>=2);
+  const got3   = _previewStudents.filter(s=>s.mentors.length===3);
 
   document.getElementById('stats-bar').innerHTML = [
-    {n:_parsedMentors.length,  l:'חונכים'},
-    {n:_parsedStudents.length, l:'סטודנטים'},
-    {n:got2.length,            l:'2 חונכים+'},
-    {n:got3.length,            l:'3 חונכים'},
-    {n:unassigned.length,      l:'ללא חונך'},
-    {n:mentorsNoStudents.length,l:'חונכים ללא סטודנטים'},
-  ].map(c=>`<div class="stat-card"><div class="stat-num" style="${c.n>0&&(c.l.includes('ללא')||c.l.includes('ללא'))&&c.l!=='חונכים ללא סטודנטים'?'color:var(--red)':''}">${c.n}</div><div class="stat-lbl">${c.l}</div></div>`).join('');
+    {n:_previewMentors.length,  l:'חונכים חדשים'},
+    {n:_previewStudents.length, l:'סטודנטים חדשים'},
+    {n:got2.length,             l:'2 חונכים+'},
+    {n:got3.length,             l:'3 חונכים'},
+    {n:unassigned.length,       l:'ללא חונך (סה"כ)'},
+    {n:_parsedMentors.length+' / '+_parsedStudents.length, l:'סה"כ ב-DB לאחר דחיפה'},
+  ].map(c=>`<div class="stat-card"><div class="stat-num" style="${typeof c.n==='number'&&c.n>0&&c.l.includes('ללא')?'color:var(--red)':''}">${c.n}</div><div class="stat-lbl">${c.l}</div></div>`).join('');
 
-  /* Warnings */
+  /* Warnings — based on full DB */
   const warns = [];
   if(unassigned.length) warns.push(`${unassigned.length} סטודנטים ללא חונך ראשי — ייתכן שאין חונך עם אותו חוג לימודים`);
   if(mentorsNoStudents.length) warns.push(`${mentorsNoStudents.length} חונכים ללא סטודנטים משובצים`);
@@ -489,7 +497,8 @@ function buildPreview(){
   wb.innerHTML = warns.length ? `<div class="warning-box">⚠️ <strong>שים לב:</strong><ul>${warns.map(w=>`<li>${w}</li>`).join('')}</ul></div>` : '';
 
   const now = new Date().toLocaleDateString('he-IL',{day:'numeric',month:'long',year:'numeric'});
-  document.getElementById('preview-sub').textContent = `${_parsedMentors.length} חונכים · ${_parsedStudents.length} סטודנטים · ${now}`;
+  const previewNote = `מציג ${_previewStudents.length} סטודנטים ו-${_previewMentors.length} חונכים מהקובץ שהועלה · ${now}`;
+  document.getElementById('preview-sub').textContent = previewNote;
 
   _currentTab = 'students';
   document.querySelectorAll('.tab-btn').forEach((b,i)=>b.classList.toggle('active',i===0));
@@ -520,30 +529,37 @@ function _mentorChip(email){
 
 function renderTable(tab){
   const tbl = document.getElementById('preview-table');
+  /* Preview shows only the rows from the uploaded file */
   if(tab === 'students'){
+    const rows = _previewStudents;
     tbl.querySelector('thead').innerHTML = `<tr>
       <th>שם</th><th>חוג לימודים</th><th>שפת אם</th><th>ל"ל</th><th>שנה</th><th>חונכים משובצים</th>
     </tr>`;
-    tbl.querySelector('tbody').innerHTML = _parsedStudents.map(s=>`<tr>
-      <td><strong>${s.n}</strong><br><span style="font-size:.72rem;color:var(--muted)">${s.e}</span></td>
-      <td><span class="tag tag-fac">${s.prog||'—'}</span></td>
-      <td>${/ערבית/i.test(s.lang)?'<span class="tag tag-ar">ערבית</span>':s.lang||'—'}</td>
-      <td>${s.ld?'<span class="tag tag-ld">כן</span>':'לא'}</td>
-      <td>${s.yr}</td>
-      <td>${s.mentors.length ? s.mentors.map(_mentorChip).join('') : '<span class="no-mentor">⚠ ללא חונך</span>'}</td>
-    </tr>`).join('');
+    tbl.querySelector('tbody').innerHTML = rows.length
+      ? rows.map(s=>`<tr>
+          <td><strong>${s.n}</strong><br><span style="font-size:.72rem;color:var(--muted)">${s.e}</span></td>
+          <td><span class="tag tag-fac">${s.prog||'—'}</span></td>
+          <td>${/ערבית/i.test(s.lang)?'<span class="tag tag-ar">ערבית</span>':s.lang||'—'}</td>
+          <td>${s.ld?'<span class="tag tag-ld">כן</span>':'לא'}</td>
+          <td>${s.yr}</td>
+          <td>${s.mentors.length ? s.mentors.map(_mentorChip).join('') : '<span class="no-mentor">⚠ ללא חונך</span>'}</td>
+        </tr>`).join('')
+      : '<tr><td colspan="6" style="text-align:center;color:var(--muted);padding:20px">אין סטודנטים חדשים בקובץ</td></tr>';
   } else {
+    const rows = _previewMentors;
     tbl.querySelector('thead').innerHTML = `<tr>
       <th>שם</th><th>חוג לימודים</th><th>שפת אם</th><th>ל"ל</th><th>שנה</th><th>מספר סטודנטים</th>
     </tr>`;
-    tbl.querySelector('tbody').innerHTML = _parsedMentors.map(m=>`<tr>
-      <td><strong>${m.n}</strong><br><span style="font-size:.72rem;color:var(--muted)">${m.e}</span></td>
-      <td><span class="tag tag-fac">${m.prog||'—'}</span></td>
-      <td>${/ערבית/i.test(m.lang)?'<span class="tag tag-ar">ערבית</span>':m.lang||'—'}</td>
-      <td>${m.ld?'<span class="tag tag-ld">כן</span>':'לא'}</td>
-      <td>${m.yr}</td>
-      <td><strong>${m.students.length}</strong> סטודנטים</td>
-    </tr>`).join('');
+    tbl.querySelector('tbody').innerHTML = rows.length
+      ? rows.map(m=>`<tr>
+          <td><strong>${m.n}</strong><br><span style="font-size:.72rem;color:var(--muted)">${m.e}</span></td>
+          <td><span class="tag tag-fac">${m.prog||'—'}</span></td>
+          <td>${/ערבית/i.test(m.lang)?'<span class="tag tag-ar">ערבית</span>':m.lang||'—'}</td>
+          <td>${m.ld?'<span class="tag tag-ld">כן</span>':'לא'}</td>
+          <td>${m.yr}</td>
+          <td><strong>${m.students.length}</strong> סטודנטים</td>
+        </tr>`).join('')
+      : '<tr><td colspan="6" style="text-align:center;color:var(--muted);padding:20px">אין חונכים חדשים בקובץ</td></tr>';
   }
 }
 

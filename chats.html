@@ -110,7 +110,7 @@
 const U = requireMentor();
 if(U) populateHeader();
 
-let chats = getData('chats');
+let chats = [];
 let openChatId = null;
 
 function applyFilters(){
@@ -221,12 +221,14 @@ function sendMsg(){
   renderChats(chats);
 }
 
-renderChats(chats);
+document.getElementById('chats-grid').innerHTML='<div class="no-results" style="grid-column:1/-1;color:var(--muted)">טוען שיחות…</div>';
 _updateNotifDot();
 
-/* ── Firebase: sync then real-time listen ── */
+/* ── Firebase: load real data, fall back to local only if Firebase has nothing ── */
 fbSync(['chats'], upd=>{
-  if(upd.chats){chats=upd.chats;renderChats(chats);_updateNotifDot();}
+  chats = upd.chats || getData('chats');
+  renderChats(chats);
+  _updateNotifDot();
 });
 fbListen('chats', updated=>{
   chats=updated;

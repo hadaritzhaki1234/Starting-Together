@@ -281,11 +281,10 @@ function _allLoaded(){
   /* Real-time listeners — one per mentor */
   sessions.forEach(s=>{
     fbListenPath(`mty/${fbSanitize(s.email)}/chats`, updated=>{
-      const fresh=updated.find(c=>c.id===U.id);
-      if(!fresh)return;
-      const idx=s.chats.findIndex(c=>c.id===U.id);
-      if(idx>=0)s.chats[idx]=fresh; else s.chats.push(fresh);
-      s.myChat=s.chats.find(c=>c.id===U.id);
+      /* Keep the FULL array in sync so writes back don't overwrite other students' data */
+      s.chats = updated;
+      s.myChat = s.chats.find(c=>c.id===U.id);
+      if(!s.myChat) return;
       renderChats();
       _updateNotifDot();
       if(activeEmail===s.email && !document.getElementById('m-chat').classList.contains('hidden'))

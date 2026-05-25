@@ -148,7 +148,7 @@ if(U){
   document.getElementById('student-badge').textContent=`👥 ${cnt} סטודנטים`;
 }
 
-let allChats = getData('chats');
+let allChats = [];
 let allFaqs  = getData('faqs');
 let allAnns  = getData('anns');
 let openChatId = null;
@@ -339,16 +339,24 @@ function sendMsg(){
   renderChats(allChats);
 }
 
-renderChats(allChats);
+/* Show loading state while waiting for Firebase */
+document.getElementById('chats-list').innerHTML='<div class="no-results" style="color:var(--muted)">טוען שיחות…</div>';
 renderFaqs(allFaqs);
 renderAnns(allAnns);
 _updateNotifDot();
 
-/* ── Firebase: sync latest data then subscribe to real-time chat updates ── */
+/* ── Firebase: load real data first, fall back to local only if Firebase has nothing ── */
 fbSync(['chats','faqs','anns'], upd=>{
-  if(upd.chats){allChats=upd.chats;renderChats(allChats);_updateNotifDot();}
-  if(upd.faqs) {allFaqs=upd.faqs; renderFaqs(allFaqs);}
-  if(upd.anns) {allAnns=upd.anns; renderAnns(allAnns);}
+  allChats = upd.chats || getData('chats');
+  if(upd.faqs) allFaqs = upd.faqs;
+  if(upd.anns) allAnns = upd.anns;
+  renderChats(allChats);
+  renderFaqs(allFaqs);
+  renderAnns(allAnns);
+  _updateNotifDot();
+  /* Update student count badge with real chat count */
+  const badge = document.getElementById('student-badge');
+  if(badge && allChats.length) badge.textContent=`👥 ${allChats.length} סטודנטים`;
 });
 fbListen('chats', updated=>{
   allChats=updated;

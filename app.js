@@ -48,7 +48,10 @@ function getMentorObj(){
 function getMentorStudentCount(){
   const u=getUser();
   if(!u||!u.isMentor)return 0;
-  return DB_STUDENTS.filter(s=>s.prog===u.prog).length;
+  /* Prefer the explicit students list set by the admin panel matching */
+  if(u.students&&u.students.length) return u.students.length;
+  /* Fallback: count by program from the dynamic DB */
+  return getStudentsDB().filter(s=>s.prog===u.prog).length;
 }
 
 function populateHeader(){
