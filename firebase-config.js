@@ -89,54 +89,94 @@ function _fbRoot(){
   return email ? `mty/${_fbSanitize(email)}` : null;
 }
 
+/* ════════════════════════════════════════════════════════
+   AUTH GATE
+   All mty/ DB operations must wait for this promise.
+   It resolves once Firebase Auth state is known:
+     • existing session restored from persistence → resolves immediately
+     • no session → re-signs in from currentUser in localStorage
+     • no credentials at all → resolves with null (login page case)
+   ════════════════════════════════════════════════════════ */
+let _authGateResolve;
+const _fbAuthReady = new Promise(res => { _authGateResolve = res; });
+
+(function _initAuthGate(){
+  if(!window.FBDB || !firebase.auth){ _authGateResolve(null); return; }
+  const _unsub = firebase.auth().onAuthStateChanged(user => {
+    _unsub();   /* one-time — unsubscribe after first event */
+    if(user){
+      console.log('%c[Auth] ✅ Auth state restored:', 'color:#16a34a;font-weight:bold', user.email);
+      _authGateResolve(user);
+    } else {
+      /* No active session — re-authenticate from stored credentials */
+      const _cu = JSON.parse(localStorage.getItem('currentUser') || 'null');
+      if(_cu && _cu.e && _cu.p){
+        firebase.auth().signInWithEmailAndPassword(_cu.e, _cu.p)
+          .then(r => { console.log('%c[Auth] ✅ Re-auth OK:', 'color:#16a34a', _cu.e); _authGateResolve(r.user); })
+          .catch(() =>
+            firebase.auth().createUserWithEmailAndPassword(_cu.e, _cu.p)
+              .then(r => { console.log('[Auth] 🆕 Created & signed in:', _cu.e); _authGateResolve(r.user); })
+              .catch(() => { console.warn('[Auth] ⚠️  Re-auth failed — rules may block DB'); _authGateResolve(null); })
+          );
+      } else {
+        /* Login page or public route — no credentials yet */
+        _authGateResolve(null);
+      }
+    }
+  });
+})();
+
 /* ── fbWrite: mirror every local write to Firebase ── */
 function fbWrite(key, val){
   const root = _fbRoot();
   if(!root) return;
-  FBDB.ref(`${root}/${key}`).set(JSON.stringify(val))
-    .then(() => console.log(`%c[Firebase] ✏️  כתב "${key}" (${Array.isArray(val)?val.length+' פריטים':'ok'})`, 'color:#0284c7'))
-    .catch(e => console.warn('[Firebase] ❌ שגיאת כתיבה:', e.message));
+  _fbAuthReady.then(() => {
+    FBDB.ref(`${root}/${key}`).set(JSON.stringify(val))
+      .then(() => console.log(`%c[Firebase] ✏️  כתב "${key}" (${Array.isArray(val)?val.length+' פריטים':'ok'})`, 'color:#0284c7'))
+      .catch(e => console.warn('[Firebase] ❌ שגיאת כתיבה:', e.message));
+  });
 }
 
 /* ── fbSync: one-time pull from Firebase → localStorage → callback ── */
 function fbSync(keys, cb){
-  const root = _fbRoot();
-  if(!root){
-    console.warn('[Firebase] fbSync: אין root (לא מחובר או לא הוגדר מנטור)');
-    cb({});
-    return;
-  }
-  console.log(`%c[Firebase] 🔄 מסנכרן: ${keys.join(', ')}`, 'color:#7c3aed');
-  const result = {};
-  let pending = keys.length;
-  const done = () => {
-    if(--pending === 0){
-      const loaded = Object.keys(result);
-      if(loaded.length){
-        console.log(`%c[Firebase] ✅ סנכרון הושלם: ${loaded.map(k=>`${k}(${Array.isArray(result[k])?result[k].length:'?'})`).join(', ')}`, 'color:#16a34a');
-      } else {
-        console.log('%c[Firebase] ℹ️  סנכרון הסתיים — לא נמצאו נתונים ב-Firebase', 'color:#ca8a04');
-      }
-      cb(result);
+  _fbAuthReady.then(() => {
+    const root = _fbRoot();
+    if(!root){
+      console.warn('[Firebase] fbSync: אין root (לא מחובר או לא הוגדר מנטור)');
+      cb({});
+      return;
     }
-  };
-
-  keys.forEach(key => {
-    FBDB.ref(`${root}/${key}`).once('value', snap => {
-      try {
-        const raw = snap.val();
-        if(raw){
-          const arr = JSON.parse(raw);
-          if(Array.isArray(arr) && arr.length){
-            localStorage.setItem(_storageKey(key), raw);
-            result[key] = arr;
-          }
+    console.log(`%c[Firebase] 🔄 מסנכרן: ${keys.join(', ')}`, 'color:#7c3aed');
+    const result = {};
+    let pending = keys.length;
+    const done = () => {
+      if(--pending === 0){
+        const loaded = Object.keys(result);
+        if(loaded.length){
+          console.log(`%c[Firebase] ✅ סנכרון הושלם: ${loaded.map(k=>`${k}(${Array.isArray(result[k])?result[k].length:'?'})`).join(', ')}`, 'color:#16a34a');
         } else {
-          console.log(`[Firebase] ℹ️  "${key}" — ריק ב-Firebase`);
+          console.log('%c[Firebase] ℹ️  סנכרון הסתיים — לא נמצאו נתונים ב-Firebase', 'color:#ca8a04');
         }
-      } catch(e){ console.warn('[Firebase] שגיאת parse:', e); }
-      done();
-    }, () => { console.warn(`[Firebase] שגיאה בקריאת "${key}"`); done(); });
+        cb(result);
+      }
+    };
+    keys.forEach(key => {
+      FBDB.ref(`${root}/${key}`).once('value', snap => {
+        try {
+          const raw = snap.val();
+          if(raw){
+            const arr = JSON.parse(raw);
+            if(Array.isArray(arr) && arr.length){
+              localStorage.setItem(_storageKey(key), raw);
+              result[key] = arr;
+            }
+          } else {
+            console.log(`[Firebase] ℹ️  "${key}" — ריק ב-Firebase`);
+          }
+        } catch(e){ console.warn('[Firebase] שגיאת parse:', e); }
+        done();
+      }, () => { console.warn(`[Firebase] שגיאה בקריאת "${key}"`); done(); });
+    });
   });
 }
 
@@ -149,6 +189,7 @@ function fbSync(keys, cb){
 function fbSeedIfEmpty(){
   const root = _fbRoot();
   if(!root) return;
+  _fbAuthReady.then(() => {
 
   /* ── chats: smart merge ── */
   FBDB.ref(`${root}/chats`).once('value', snap => {
@@ -193,24 +234,28 @@ function fbSeedIfEmpty(){
       }
     });
   });
+
+  }); /* end _fbAuthReady.then */
 }
 
 /* ── fbListen: real-time listener on namespaced key ── */
 function fbListen(key, cb){
-  const root = _fbRoot();
-  if(!root) return;
-  console.log(`%c[Firebase] 👂 מאזין ל: "${key}"`, 'color:#7c3aed');
-  FBDB.ref(`${root}/${key}`).on('value', snap => {
-    try {
-      const raw = snap.val();
-      if(!raw) return;
-      const arr = JSON.parse(raw);
-      if(Array.isArray(arr) && arr.length){
-        localStorage.setItem(_storageKey(key), raw);
-        console.log(`%c[Firebase] 📡 עדכון חי: "${key}" — ${arr.length} פריטים`, 'color:#0891b2');
-        cb(arr);
-      }
-    } catch(e){}
+  _fbAuthReady.then(() => {
+    const root = _fbRoot();
+    if(!root) return;
+    console.log(`%c[Firebase] 👂 מאזין ל: "${key}"`, 'color:#7c3aed');
+    FBDB.ref(`${root}/${key}`).on('value', snap => {
+      try {
+        const raw = snap.val();
+        if(!raw) return;
+        const arr = JSON.parse(raw);
+        if(Array.isArray(arr) && arr.length){
+          localStorage.setItem(_storageKey(key), raw);
+          console.log(`%c[Firebase] 📡 עדכון חי: "${key}" — ${arr.length} פריטים`, 'color:#0891b2');
+          cb(arr);
+        }
+      } catch(e){}
+    });
   });
 }
 
@@ -225,32 +270,38 @@ function fbSanitize(email){ return _fbSanitize(email); }
 /* One-time read from an absolute path; cb(parsedArray | null) */
 function fbSyncPath(path, cb){
   if(!window.FBDB){ cb(null); return; }
-  FBDB.ref(path).once('value', snap => {
-    try {
-      const raw = snap.val();
-      cb(raw ? JSON.parse(raw) : null);
-    } catch(e){ cb(null); }
-  }, () => cb(null));
+  _fbAuthReady.then(() => {
+    FBDB.ref(path).once('value', snap => {
+      try {
+        const raw = snap.val();
+        cb(raw ? JSON.parse(raw) : null);
+      } catch(e){ cb(null); }
+    }, () => cb(null));
+  });
 }
 
 /* Write a value to an absolute path */
 function fbWritePath(path, val){
   if(!window.FBDB) return;
-  FBDB.ref(path).set(JSON.stringify(val))
-    .catch(e => console.warn('[Firebase] write error on path:', path, e.message));
+  _fbAuthReady.then(() => {
+    FBDB.ref(path).set(JSON.stringify(val))
+      .catch(e => console.warn('[Firebase] write error on path:', path, e.message));
+  });
 }
 
 /* Real-time listener on an absolute path; cb(parsedArray) */
 function fbListenPath(path, cb){
   if(!window.FBDB) return;
-  FBDB.ref(path).on('value', snap => {
-    try {
-      const raw = snap.val();
-      if(raw){
-        const arr = JSON.parse(raw);
-        if(Array.isArray(arr) && arr.length) cb(arr);
-      }
-    } catch(e){}
+  _fbAuthReady.then(() => {
+    FBDB.ref(path).on('value', snap => {
+      try {
+        const raw = snap.val();
+        if(raw){
+          const arr = JSON.parse(raw);
+          if(Array.isArray(arr) && arr.length) cb(arr);
+        }
+      } catch(e){}
+    });
   });
 }
 
