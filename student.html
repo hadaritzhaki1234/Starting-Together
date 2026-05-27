@@ -220,6 +220,7 @@ function openChat(email){
   openModal('m-chat');
   /* Mark as read */
   s.myChat.mentorUnread=0;
+  if(!s.chats.find(c=>String(c.id)===String(U.id))) s.chats.push(s.myChat);
   fbWritePath(`mty/${fbSanitize(email)}/chats`, s.chats);
   renderChats();
   _updateNotifDot();
@@ -245,6 +246,7 @@ function sendMsg(){
   s.myChat.preview=txt;
   s.myChat.unread=(s.myChat.unread||0)+1;
   inp.value='';
+  if(!s.chats.find(c=>String(c.id)===String(U.id))) s.chats.push(s.myChat);
   fbWritePath(`mty/${fbSanitize(activeEmail)}/chats`, s.chats);
   renderMsgs(s.myChat);
 }
@@ -252,7 +254,7 @@ function sendMsg(){
 /* ── INIT: ensure student has an entry in each mentor's chat list ── */
 function _ensureMyChat(s, chatsFromFirebase){
   s.chats = chatsFromFirebase || [];
-  s.myChat = s.chats.find(c=>c.id===U.id)||null;
+  s.myChat = s.chats.find(c=>String(c.id)===String(U.id))||null;
   if(!s.myChat){
     const ini=U.n.split(' ').slice(0,2).map(w=>w[0]).join('');
     s.myChat={_v:CHATS_V,id:U.id,name:U.n,initials:ini,color:'#3EA9A3',
@@ -281,9 +283,16 @@ function _allLoaded(){
   /* Real-time listeners — one per mentor */
   sessions.forEach(s=>{
     fbListenPath(`mty/${fbSanitize(s.email)}/chats`, updated=>{
-      /* Keep the FULL array in sync so writes back don't overwrite other students' data */
+      /* Replace full array so writes back never corrupt other students' entries */
       s.chats = updated;
-      s.myChat = s.chats.find(c=>c.id===U.id);
+      const found = s.chats.find(c=>String(c.id)===String(U.id));
+      if(found){
+        s.myChat = found;           /* use fresh copy from Firebase */
+      } else if(s.myChat){
+        /* Race: our entry not yet confirmed in Firebase — re-add it so
+           any write back still includes our messages */
+        s.chats.push(s.myChat);
+      }
       if(!s.myChat) return;
       renderChats();
       _updateNotifDot();

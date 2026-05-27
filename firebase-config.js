@@ -141,18 +141,50 @@ function fbSync(keys, cb){
 }
 
 /* ── fbSeedIfEmpty: called once on mentor login ── */
-/* Only seeds a key if it is completely absent from Firebase — never overwrites existing data */
+/*
+  chats  — merge: adds entries for any students missing from Firebase
+            (handles the case where a student logged in before the mentor)
+  faqs / anns — only seed if completely absent
+*/
 function fbSeedIfEmpty(){
   const root = _fbRoot();
   if(!root) return;
-  ['chats','faqs','anns'].forEach(key => {
+
+  /* ── chats: smart merge ── */
+  FBDB.ref(`${root}/chats`).once('value', snap => {
+    const existing = snap.val();
+    const builtChats = getData('chats');   /* full list built from student DB */
+    if(!existing){
+      if(builtChats && builtChats.length){
+        FBDB.ref(`${root}/chats`).set(JSON.stringify(builtChats))
+          .then(()=>console.log(`%c[Firebase] 🌱 זרע chats (${builtChats.length} סטודנטים)`, 'color:#16a34a'))
+          .catch(e=>console.warn('[Firebase] שגיאת seeding chats:',e.message));
+      }
+    } else {
+      /* Path exists — add any students whose entries are missing */
+      try {
+        const arr    = JSON.parse(existing);
+        const inDB   = new Set(arr.map(c=>String(c.id)));
+        const missing= (builtChats||[]).filter(c=>!inDB.has(String(c.id)));
+        if(missing.length){
+          const merged = [...arr, ...missing];
+          FBDB.ref(`${root}/chats`).set(JSON.stringify(merged))
+            .then(()=>console.log(`%c[Firebase] 🌱 הוסיף ${missing.length} סטודנטים חסרים ל-chats`, 'color:#0284c7'))
+            .catch(e=>console.warn('[Firebase] שגיאת merge chats:',e.message));
+        } else {
+          console.log(`[Firebase] ℹ️  chats מלא (${arr.length} סטודנטים) — אין צורך בהוספה`);
+        }
+      } catch(e){ console.warn('[Firebase] fbSeedIfEmpty: parse error', e); }
+    }
+  });
+
+  /* ── faqs / anns: only seed if absent ── */
+  ['faqs','anns'].forEach(key => {
     FBDB.ref(`${root}/${key}`).once('value', snap => {
-      const existing = snap.val();
-      if(existing){
+      if(snap.val()){
         console.log(`[Firebase] ℹ️  "${key}" כבר קיים ב-Firebase — לא מדרס`);
         return;
       }
-      /* Truly empty — seed with local defaults */
       const data = getData(key);
       if(data && data.length){
         FBDB.ref(`${root}/${key}`).set(JSON.stringify(data))

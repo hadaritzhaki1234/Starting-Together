@@ -345,24 +345,20 @@ renderFaqs(allFaqs);
 renderAnns(allAnns);
 _updateNotifDot();
 
-/* ── Firebase: load real data first, fall back to local only if Firebase has nothing ── */
-fbSync(['chats','faqs','anns'], upd=>{
-  allChats = upd.chats || getData('chats');
-  if(upd.faqs) allFaqs = upd.faqs;
-  if(upd.anns) allAnns = upd.anns;
-  renderChats(allChats);
-  renderFaqs(allFaqs);
-  renderAnns(allAnns);
-  _updateNotifDot();
-  /* Update student count badge with real chat count */
-  const badge = document.getElementById('student-badge');
-  if(badge && allChats.length) badge.textContent=`👥 ${allChats.length} סטודנטים`;
+/* ── Firebase: fbListen fires immediately (initial load) AND on every change (real-time) ── */
+/* Use fbSync only for faqs/anns which have no real-time listener */
+fbSync(['faqs','anns'], upd=>{
+  if(upd.faqs){allFaqs=upd.faqs; renderFaqs(allFaqs);}
+  if(upd.anns){allAnns=upd.anns; renderAnns(allAnns);}
 });
 fbListen('chats', updated=>{
   allChats=updated;
   renderChats(allChats);
   _updateNotifDot();
-  if(openChatId){const c=allChats.find(i=>i.id===openChatId);if(c)renderMsgs(c);}
+  /* Update student count badge */
+  const badge=document.getElementById('student-badge');
+  if(badge&&allChats.length) badge.textContent=`👥 ${allChats.length} סטודנטים`;
+  if(openChatId){const c=allChats.find(i=>String(i.id)===String(openChatId));if(c)renderMsgs(c);}
 });
 </script>
 </body>

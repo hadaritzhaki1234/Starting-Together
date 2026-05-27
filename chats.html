@@ -224,17 +224,12 @@ function sendMsg(){
 document.getElementById('chats-grid').innerHTML='<div class="no-results" style="grid-column:1/-1;color:var(--muted)">טוען שיחות…</div>';
 _updateNotifDot();
 
-/* ── Firebase: load real data, fall back to local only if Firebase has nothing ── */
-fbSync(['chats'], upd=>{
-  chats = upd.chats || getData('chats');
-  renderChats(chats);
-  _updateNotifDot();
-});
+/* ── Firebase: fbListen handles both initial load and real-time updates ── */
 fbListen('chats', updated=>{
   chats=updated;
   renderChats(chats);
   _updateNotifDot();
-  if(openChatId){const c=chats.find(i=>i.id===openChatId);if(c)renderMsgs(c);}
+  if(openChatId){const c=chats.find(i=>String(i.id)===String(openChatId));if(c)renderMsgs(c);}
 });
 </script>
 </body>
