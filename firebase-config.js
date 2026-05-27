@@ -100,6 +100,9 @@ function _fbRoot(){
 let _authGateResolve;
 const _fbAuthReady = new Promise(res => { _authGateResolve = res; });
 
+/* Firebase Auth requires passwords ≥ 6 chars. Pad short ones consistently. */
+function _fbPad(p){ if(!p) return '!!!!!!'; return p.length < 6 ? (p + '!!!!!!').slice(0, 6) : p; }
+
 (function _initAuthGate(){
   if(!window.FBDB || !firebase.auth){ _authGateResolve(null); return; }
   const _unsub = firebase.auth().onAuthStateChanged(user => {
@@ -111,10 +114,11 @@ const _fbAuthReady = new Promise(res => { _authGateResolve = res; });
       /* No active session — re-authenticate from stored credentials */
       const _cu = JSON.parse(localStorage.getItem('currentUser') || 'null');
       if(_cu && _cu.e && _cu.p){
-        firebase.auth().signInWithEmailAndPassword(_cu.e, _cu.p)
+        const _fp = _fbPad(_cu.p);   /* padded password for Firebase Auth */
+        firebase.auth().signInWithEmailAndPassword(_cu.e, _fp)
           .then(r => { console.log('%c[Auth] ✅ Re-auth OK:', 'color:#16a34a', _cu.e); _authGateResolve(r.user); })
           .catch(() =>
-            firebase.auth().createUserWithEmailAndPassword(_cu.e, _cu.p)
+            firebase.auth().createUserWithEmailAndPassword(_cu.e, _fp)
               .then(r => { console.log('[Auth] 🆕 Created & signed in:', _cu.e); _authGateResolve(r.user); })
               .catch(() => { console.warn('[Auth] ⚠️  Re-auth failed — rules may block DB'); _authGateResolve(null); })
           );
@@ -354,7 +358,8 @@ function fbSignIn(email, password, cb){
     console.warn('[Auth] firebase.auth not available — skipping sign-in');
     cb(true); return;
   }
-  firebase.auth().signInWithEmailAndPassword(email, password)
+  const fp = _fbPad(password);   /* padded password — matches _initAuthGate padding */
+  firebase.auth().signInWithEmailAndPassword(email, fp)
     .then(() => {
       console.log('%c[Auth] ✅ Firebase sign-in OK:', 'color:#16a34a;font-weight:bold', email);
       cb(true);
@@ -362,13 +367,13 @@ function fbSignIn(email, password, cb){
     .catch(err => {
       if(err.code === 'auth/user-not-found' || err.code === 'auth/invalid-credential' || err.code === 'auth/invalid-email'){
         /* First-time user — create the Firebase Auth account silently */
-        firebase.auth().createUserWithEmailAndPassword(email, password)
+        firebase.auth().createUserWithEmailAndPassword(email, fp)
           .then(() => {
             console.log('%c[Auth] 🆕 Firebase account created:', 'color:#0284c7;font-weight:bold', email);
             cb(true);
           })
           .catch(e2 => {
-            /* createUser can fail (e.g. weak password) — log but don't block login */
+            /* createUser can fail — log but don't block login */
             console.warn('[Auth] createUser failed (non-blocking):', e2.message);
             cb(true);
           });
