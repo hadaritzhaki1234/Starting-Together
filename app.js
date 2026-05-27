@@ -108,19 +108,21 @@ const ANNS_V=3;  // bump when ann data model changes
 const FAQS_V=2;  // bump when FAQ_DEFAULTS list grows
 
 function getData(key){
+  /* Chats are never cached in localStorage — always built fresh from the DB.
+     Real data comes from Firebase via fbListen; buildChats() is only used
+     for the initial seed (fbSeedIfEmpty) and as an offline fallback. */
+  if(key==='chats') return buildChats();
   try{
     const raw=localStorage.getItem(_storageKey(key));
     if(raw){
       const d=JSON.parse(raw);
       if(d&&d.length){
-        if(key==='chats'&&d[0]._v!==CHATS_V)throw new Error('stale');
         if(key==='anns'&&(d[0]._v||0)<ANNS_V)throw new Error('stale');
         if(key==='faqs'&&(d[0]._v||0)<FAQS_V)throw new Error('stale');
         return d;
       }
     }
   }catch(e){}
-  if(key==='chats')return buildChats();
   if(key==='anns'){const a=_getAnnDefaults();a.forEach(i=>{i._v=ANNS_V;});return a;}
   if(key==='faqs'){const f=JSON.parse(JSON.stringify(FAQ_DEFAULTS));f.forEach(i=>{i._v=FAQS_V;});return f;}
   return[];
