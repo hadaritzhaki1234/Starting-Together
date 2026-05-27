@@ -132,7 +132,8 @@ function renderChats(items){
 
   if(!items.length){grid.innerHTML='<div class="no-results" style="grid-column:1/-1">לא נמצאו שיחות תואמות</div>';return;}
 
-  grid.innerHTML=items.map(c=>{
+  const sorted=[...items].sort((a,b)=>(b.lastMsgAt||0)-(a.lastMsgAt||0));
+  grid.innerHTML=sorted.map(c=>{
     const ov=c.hoursAgo>=24;
     const timeLabel=fmtTime(c.hoursAgo);
     const unrd=c.unread||0;
@@ -215,6 +216,7 @@ function sendMsg(){
   const t=`${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
   c.msgs.push({t:txt,sent:true,from:'mentor',time:t});
   c.preview=txt;
+  c.lastMsgAt=Date.now();
   c.mentorUnread=(c.mentorUnread||0)+1;  // notify student
   inp.value='';
   setData('chats',chats);

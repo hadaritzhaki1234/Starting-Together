@@ -136,7 +136,8 @@ function renderChats(){
         </div>
         <div>
           <div style="font-weight:700;font-size:.92rem">${m?x(m.n):'חונך/ת'}</div>
-          <div style="font-size:.72rem;color:var(--muted)">${m?x(m.role||'חונך/ת'):''} · שנה ${m?m.yr:''}</div>
+          <div style="font-size:.72rem;color:var(--muted);margin-bottom:4px">${m?x(m.role||'חונך/ת'):''} · שנה ${m?m.yr:''}</div>
+          ${m&&m.prog?`<span style="font-size:.68rem;padding:2px 8px;border-radius:50px;background:#eff6ff;color:#2563eb;font-weight:600">${x(m.prog)}</span>`:''}
         </div>
         ${unread>0?`<span class="unread-badge" style="margin-right:auto">${unread}</span>`:''}
       </div>
@@ -244,6 +245,7 @@ function sendMsg(){
   const t=`${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
   s.myChat.msgs.push({t:txt,from:'student',time:t});
   s.myChat.preview=txt;
+  s.myChat.lastMsgAt=Date.now();
   s.myChat.unread=(s.myChat.unread||0)+1;
   inp.value='';
   if(!s.chats.find(c=>String(c.id)===String(U.id))) s.chats.push(s.myChat);

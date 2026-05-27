@@ -483,7 +483,8 @@ function buildPreview(){
     {n:got2.length,             l:'2 חונכים+'},
     {n:got3.length,             l:'3 חונכים'},
     {n:unassigned.length,       l:'ללא חונך (סה"כ)'},
-    {n:_parsedMentors.length+' / '+_parsedStudents.length, l:'סה"כ ב-DB לאחר דחיפה'},
+    {n:_parsedMentors.length, l:'סה"כ חונכים ב-DB'},
+    {n:_parsedStudents.length, l:'סה"כ סטודנטים ב-DB'},
   ].map(c=>`<div class="stat-card"><div class="stat-num" style="${typeof c.n==='number'&&c.n>0&&c.l.includes('ללא')?'color:var(--red)':''}">${c.n}</div><div class="stat-lbl">${c.l}</div></div>`).join('');
 
   /* Warnings — based on full DB */

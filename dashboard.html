@@ -164,7 +164,8 @@ function filterChats(q){
 function renderChats(items){
   const el=document.getElementById('chats-list');
   if(!items.length){el.innerHTML='<div class="no-results">לא נמצאו סטודנטים</div>';return;}
-  el.innerHTML=items.slice(0,5).map(c=>{
+  const sorted=[...items].sort((a,b)=>(b.lastMsgAt||0)-(a.lastMsgAt||0));
+  el.innerHTML=sorted.slice(0,5).map(c=>{
     const ov=c.hoursAgo>=24;
     const unrd=c.unread||0;
     return`<div class="chat-item" onclick="openChat(${c.id})">
@@ -333,6 +334,7 @@ function sendMsg(){
   const t=`${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
   c.msgs.push({t:txt,sent:true,from:'mentor',time:t});
   c.preview=txt;
+  c.lastMsgAt=Date.now();
   c.mentorUnread=(c.mentorUnread||0)+1;  // notify student
   inp.value='';
   setData('chats',allChats);
