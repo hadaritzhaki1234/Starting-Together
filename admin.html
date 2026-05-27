@@ -479,12 +479,9 @@ function buildPreview(){
   const got3   = _previewStudents.filter(s=>s.mentors.length===3);
 
   document.getElementById('stats-bar').innerHTML = [
-    {n:_parsedStudents.length,  l:'סטודנטים ב-DB',    red:false},
-    {n:_previewStudents.length, l:'סטודנטים חדשים',   red:false},
-    {n:got2.length,             l:'2 חונכים+',         red:false},
-    {n:got3.length,             l:'3 חונכים',          red:false},
-    {n:unassigned.length,       l:'ללא חונך (סה"כ)',   red:unassigned.length>0},
-  ].map(c=>`<div class="stat-card"><div class="stat-num" style="${c.red?'color:var(--red)':''}">${c.n}</div><div class="stat-lbl">${c.l}</div></div>`).join('');
+    {n:_parsedStudents.length,  l:'סטודנטים ב-DB'},
+    {n:_previewStudents.length, l:'סטודנטים חדשים'},
+  ].map(c=>`<div class="stat-card"><div class="stat-num">${c.n}</div><div class="stat-lbl">${c.l}</div></div>`).join('');
 
   /* Department breakdown — from full merged DB */
   const deptMap = {};
@@ -505,7 +502,7 @@ function buildPreview(){
     <div style="margin:16px 0 8px;font-weight:700;font-size:.9rem">📊 פירוט לפי חוג לימודים — סה"כ ב-DB לאחר דחיפה</div>
     <div class="table-wrap" style="margin-bottom:16px">
       <table class="data-table">
-        <thead><tr><th>חוג לימודים</th><th>סה"כ סטודנטים</th></tr></thead>
+        <thead><tr><th>חוג לימודים</th><th style="text-align:center">סה"כ סטודנטים</th></tr></thead>
         <tbody>${deptRows}</tbody>
       </table>
     </div>` : '';
