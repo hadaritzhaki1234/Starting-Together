@@ -255,6 +255,10 @@ function fbListen(key, cb){
           cb(arr);
         }
       } catch(e){}
+    }, err => {
+      console.warn(`%c[Firebase] 🔴 "${key}" נחסם (${err.code}) — טוען מ-localStorage`, 'color:#dc2626');
+      const local = getData(key);
+      if(local && local.length) cb(local);
     });
   });
 }
@@ -301,6 +305,8 @@ function fbListenPath(path, cb){
           if(Array.isArray(arr) && arr.length) cb(arr);
         }
       } catch(e){}
+    }, err => {
+      console.warn(`%c[Firebase] 🔴 path "${path}" נחסם (${err.code})`, 'color:#dc2626');
     });
   });
 }
