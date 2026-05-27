@@ -166,11 +166,10 @@ function buildChats(){
   return myStudents.map((s,i)=>{
     const ini=s.ini||(s.n.split(' ').slice(0,2).map(w=>w[0]).join(''));
     const color=s.color||_PALETTE[i%_PALETTE.length];
-    const prev=CHAT_PREVIEWS[i%CHAT_PREVIEWS.length];
     return{_v:CHATS_V,id:s.id,name:s.n,initials:ini,color,
-      online:i%5===0,hoursAgo:CHAT_GAPS[i]||0,preview:prev,
+      online:false,hoursAgo:0,preview:'',
       prog:s.prog,yr:s.yr,lang:s.lang,ld:s.ld,
-      msgs:[{t:prev,sent:false,from:'student',time:'10:30'}]};
+      msgs:[]};
   });
 }
 

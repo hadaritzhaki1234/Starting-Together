@@ -189,6 +189,7 @@ function openChat(id){
   c.hoursAgo=0;
   c.unread=0;          // mentor read the messages
   setData('chats',chats);
+  fbWrite('chats',chats);  // sync read status to Firebase
   renderChats(chats);
   _updateNotifDot();
   setTimeout(()=>document.getElementById('chat-in').focus(),200);
@@ -217,6 +218,7 @@ function sendMsg(){
   c.mentorUnread=(c.mentorUnread||0)+1;  // notify student
   inp.value='';
   setData('chats',chats);
+  fbWrite('chats',chats);  // push to Firebase so student receives it
   renderMsgs(c);
   renderChats(chats);
 }
