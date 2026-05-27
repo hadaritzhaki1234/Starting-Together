@@ -103,7 +103,7 @@ function _storageKey(key){
   const email=getMentorEmail();
   return email?`mty_${key}_${email}`:`mty_${key}`;
 }
-const CHATS_V=6; // bump to force-rebuild stale cached chats
+const CHATS_V=7; // bump to force-rebuild stale cached chats
 const ANNS_V=3;  // bump when ann data model changes
 const FAQS_V=2;  // bump when FAQ_DEFAULTS list grows
 
