@@ -479,9 +479,7 @@ function buildPreview(){
   const got3   = _previewStudents.filter(s=>s.mentors.length===3);
 
   document.getElementById('stats-bar').innerHTML = [
-    {n:_parsedMentors.length,   l:'חונכים ב-DB',      red:false},
     {n:_parsedStudents.length,  l:'סטודנטים ב-DB',    red:false},
-    {n:_previewMentors.length,  l:'חונכים חדשים',     red:false},
     {n:_previewStudents.length, l:'סטודנטים חדשים',   red:false},
     {n:got2.length,             l:'2 חונכים+',         red:false},
     {n:got3.length,             l:'3 חונכים',          red:false},
@@ -502,14 +500,12 @@ function buildPreview(){
     .map(([dept,d])=>`<tr>
       <td><strong>${dept}</strong></td>
       <td style="text-align:center">${d.total}</td>
-      <td style="text-align:center;color:var(--green,#16a34a)">${d.assigned}</td>
-      <td style="text-align:center;${d.unassigned>0?'color:var(--red);font-weight:700':'color:var(--muted)'}">${d.unassigned>0?'⚠ '+d.unassigned:'✓'}</td>
     </tr>`).join('');
   document.getElementById('dept-breakdown').innerHTML = deptRows ? `
     <div style="margin:16px 0 8px;font-weight:700;font-size:.9rem">📊 פירוט לפי חוג לימודים — סה"כ ב-DB לאחר דחיפה</div>
     <div class="table-wrap" style="margin-bottom:16px">
       <table class="data-table">
-        <thead><tr><th>חוג לימודים</th><th>סה"כ סטודנטים</th><th>עם חונך</th><th>ללא חונך</th></tr></thead>
+        <thead><tr><th>חוג לימודים</th><th>סה"כ סטודנטים</th></tr></thead>
         <tbody>${deptRows}</tbody>
       </table>
     </div>` : '';
