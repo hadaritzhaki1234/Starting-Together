@@ -164,7 +164,6 @@ function buildChats(){
   } else {
     myStudents=allStudents.filter(s=>s.prog===u.prog);
   }
-  myStudents=myStudents.slice(0,20);
   return myStudents.map((s,i)=>{
     const ini=s.ini||(s.n.split(' ').slice(0,2).map(w=>w[0]).join(''));
     const color=s.color||_PALETTE[i%_PALETTE.length];
