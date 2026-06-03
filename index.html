@@ -147,6 +147,17 @@ body{font-family:'Heebo',system-ui,sans-serif;direction:rtl;background:var(--bg)
 <script>
 document.getElementById('yr').textContent = new Date().getFullYear();
 
+/* Auto-redirect already-logged-in users to their dashboard */
+(function(){
+  try{
+    const cu = JSON.parse(localStorage.getItem('currentUser') || 'null');
+    if(!cu) return;
+    if(cu.isAdmin)       { window.location.replace('admin.html');   return; }
+    if(cu.isMentor)      { window.location.replace('dashboard.html'); return; }
+    if(cu.id)            { window.location.replace('student.html');  return; }
+  }catch(e){}
+})();
+
 /* Load real user counts from Firebase */
 fbLoadDB(result => {
   const mentors  = (result && result.mentors)  || getMentorsDB();

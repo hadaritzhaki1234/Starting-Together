@@ -138,6 +138,7 @@ body{font-family:'Heebo',system-ui,sans-serif;direction:rtl;background:var(--bg)
   <input type="file" id="file-input" accept=".xlsx,.xls" onchange="handleFile(this.files[0])">
 
   <div id="upload-status" style="margin-top:16px;font-size:.85rem;color:var(--muted)"></div>
+  <div id="db-dept-stats" style="margin-top:24px"></div>
 </div>
 
 <!-- ════ SCREEN: PREVIEW ════ -->
@@ -211,6 +212,7 @@ function adminLogin(){
     document.getElementById('hdr-user').textContent='מנהל מערכת';
     fbSignIn(em, pw, ()=>{}); /* sign into Firebase Auth silently */
     showScreen('screen-upload');
+    _loadDbDeptStats();
   } else {
     err.classList.add('show');
   }
@@ -470,6 +472,40 @@ function runMatching(mentors, students){
   return { mentors, students };
 }
 
+/* ══ Shared: build dept breakdown table HTML from a student array ══ */
+function _deptTableHtml(students, title){
+  const deptMap = {};
+  students.forEach(s=>{
+    const d = s.prog||'לא ידוע';
+    if(!deptMap[d]) deptMap[d] = 0;
+    deptMap[d]++;
+  });
+  const rows = Object.entries(deptMap)
+    .sort((a,b)=>b[1]-a[1])
+    .map(([dept,n])=>`<tr><td><strong>${dept}</strong></td><td style="text-align:center">${n}</td></tr>`)
+    .join('');
+  if(!rows) return '';
+  return `<div style="margin:0 0 8px;font-weight:700;font-size:.9rem">${title}</div>
+    <div class="table-wrap" style="margin-bottom:16px">
+      <table class="data-table">
+        <thead><tr><th>חוג לימודים</th><th style="text-align:center">סה"כ סטודנטים</th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>`;
+}
+
+/* ══ Load existing DB dept stats for the upload screen ══ */
+function _loadDbDeptStats(){
+  const el = document.getElementById('db-dept-stats');
+  if(!el) return;
+  el.innerHTML = '<div style="color:var(--muted);font-size:.83rem">טוען נתוני מסד...</div>';
+  fbLoadDB(result => {
+    const students = (result && result.students) || getStudentsDB() || [];
+    if(!students.length){ el.innerHTML = ''; return; }
+    el.innerHTML = _deptTableHtml(students, `📊 פירוט לפי חוג — מסד קיים (${students.length} סטודנטים)`);
+  });
+}
+
 /* ══ Preview ══ */
 function buildPreview(){
   /* Stats — always based on full merged set (what will be in DB after push) */
@@ -486,29 +522,9 @@ function buildPreview(){
     {n:unassigned.length,       l:'ללא שיבוץ',        red:unassigned.length>0},
   ].map(c=>`<div class="stat-card"><div class="stat-num" style="${c.red?'color:var(--red)':''}">${c.n}</div><div class="stat-lbl">${c.l}</div></div>`).join('');
 
-  /* Department breakdown — from full merged DB */
-  const deptMap = {};
-  _parsedStudents.forEach(s=>{
-    const d = s.prog||'לא ידוע';
-    if(!deptMap[d]) deptMap[d]={total:0,assigned:0,unassigned:0};
-    deptMap[d].total++;
-    if(s.mentors&&s.mentors.length) deptMap[d].assigned++;
-    else deptMap[d].unassigned++;
-  });
-  const deptRows = Object.entries(deptMap)
-    .sort((a,b)=>b[1].total-a[1].total)
-    .map(([dept,d])=>`<tr>
-      <td><strong>${dept}</strong></td>
-      <td style="text-align:center">${d.total}</td>
-    </tr>`).join('');
-  document.getElementById('dept-breakdown').innerHTML = deptRows ? `
-    <div style="margin:16px 0 8px;font-weight:700;font-size:.9rem">📊 פירוט לפי חוג לימודים — סה"כ ב-DB לאחר דחיפה</div>
-    <div class="table-wrap" style="margin-bottom:16px">
-      <table class="data-table">
-        <thead><tr><th>חוג לימודים</th><th style="text-align:center">סה"כ סטודנטים</th></tr></thead>
-        <tbody>${deptRows}</tbody>
-      </table>
-    </div>` : '';
+  /* Department breakdown — full merged DB (existing + new upload) */
+  document.getElementById('dept-breakdown').innerHTML =
+    _deptTableHtml(_parsedStudents, `📊 פירוט לפי חוג — סה"כ ב-DB לאחר דחיפה (${_parsedStudents.length} סטודנטים)`);
 
   /* Warnings — based on full DB */
   const warns = [];
