@@ -370,6 +370,8 @@ function parseWorkbook(wb){
         const keepMentors = mergedStudents[idx].mentors || [];
         Object.assign(mergedStudents[idx], ns);
         mergedStudents[idx].mentors = keepMentors;
+        /* Re-match existing students that have no mentor yet */
+        if(!keepMentors.length) toMatch.push(mergedStudents[idx]);
       } else {
         const fresh = {...ns, mentors:[]};
         mergedStudents.push(fresh);
@@ -479,9 +481,10 @@ function buildPreview(){
   const got3   = _previewStudents.filter(s=>s.mentors.length===3);
 
   document.getElementById('stats-bar').innerHTML = [
-    {n:_parsedStudents.length,  l:'סטודנטים ב-DB'},
-    {n:_previewStudents.length, l:'סטודנטים חדשים'},
-  ].map(c=>`<div class="stat-card"><div class="stat-num">${c.n}</div><div class="stat-lbl">${c.l}</div></div>`).join('');
+    {n:_parsedStudents.length,  l:'סטודנטים ב-DB',   red:false},
+    {n:_previewStudents.length, l:'סטודנטים חדשים',  red:false},
+    {n:unassigned.length,       l:'ללא שיבוץ',        red:unassigned.length>0},
+  ].map(c=>`<div class="stat-card"><div class="stat-num" style="${c.red?'color:var(--red)':''}">${c.n}</div><div class="stat-lbl">${c.l}</div></div>`).join('');
 
   /* Department breakdown — from full merged DB */
   const deptMap = {};

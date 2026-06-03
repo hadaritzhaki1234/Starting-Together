@@ -96,6 +96,16 @@ const U = requireStudent();
 if(!U) throw new Error('no user');
 populateHeader();
 
+/* ── Mentor badge: shows WHY this mentor was assigned to this student ── */
+function _mentorBadge(m){
+  const isArabicStudent = /ערבית/i.test(U.lang||'');
+  const badge = (bg, color, label) =>
+    `<span style="font-size:.68rem;padding:2px 8px;border-radius:50px;background:${bg};color:${color};font-weight:600">${label}</span>`;
+  if(isArabicStudent && /ערבית/i.test(m.lang||'')) return badge('#fef3c7','#92400e','ערבית');
+  if(U.ld && m.ld)                                 return badge('#fef9c3','#92400e','לקויות למידה');
+  return m.prog ? badge('#eff6ff','#2563eb', x(m.prog)) : '';
+}
+
 /* ── State ── */
 let allFaqs = getData('faqs');
 let allAnns = getData('anns');
@@ -137,7 +147,7 @@ function renderChats(){
         <div>
           <div style="font-weight:700;font-size:.92rem">${m?x(m.n):'חונך/ת'}</div>
           <div style="font-size:.72rem;color:var(--muted);margin-bottom:4px">${m?x(m.role||'חונך/ת'):''} · שנה ${m?m.yr:''}</div>
-          ${m&&m.prog?`<span style="font-size:.68rem;padding:2px 8px;border-radius:50px;background:#eff6ff;color:#2563eb;font-weight:600">${x(m.prog)}</span>`:''}
+          ${m?_mentorBadge(m):''}
         </div>
         ${unread>0?`<span class="unread-badge" style="margin-right:auto">${unread}</span>`:''}
       </div>
