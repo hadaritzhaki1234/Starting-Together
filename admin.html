@@ -472,23 +472,33 @@ function runMatching(mentors, students){
   return { mentors, students };
 }
 
-/* ══ Shared: build dept breakdown table HTML from a student array ══ */
-function _deptTableHtml(students, title){
+/* ══ Shared: build dept breakdown table HTML ══
+   students  — full merged array (DB + new upload)
+   newEmails — optional Set of emails from this upload (adds "חדשים" column)
+*/
+function _deptTableHtml(students, title, newEmails){
   const deptMap = {};
   students.forEach(s=>{
     const d = s.prog||'לא ידוע';
-    if(!deptMap[d]) deptMap[d] = 0;
-    deptMap[d]++;
+    if(!deptMap[d]) deptMap[d] = {total:0, added:0};
+    deptMap[d].total++;
+    if(newEmails && newEmails.has(s.e)) deptMap[d].added++;
   });
+  const hasNew = newEmails && newEmails.size > 0;
   const rows = Object.entries(deptMap)
-    .sort((a,b)=>b[1]-a[1])
-    .map(([dept,n])=>`<tr><td><strong>${dept}</strong></td><td style="text-align:center">${n}</td></tr>`)
-    .join('');
+    .sort((a,b)=>b[1].total-a[1].total)
+    .map(([dept,d])=>`<tr>
+      <td><strong>${dept}</strong></td>
+      <td style="text-align:center">${d.total}</td>
+      ${hasNew?`<td style="text-align:center;color:${d.added>0?'#16a34a':'var(--muted)'}">
+        ${d.added>0?'+'+d.added:'—'}</td>`:''}
+    </tr>`).join('');
   if(!rows) return '';
+  const extraTh = hasNew ? `<th style="text-align:center">חדשים מהקובץ</th>` : '';
   return `<div style="margin:0 0 8px;font-weight:700;font-size:.9rem">${title}</div>
     <div class="table-wrap" style="margin-bottom:16px">
       <table class="data-table">
-        <thead><tr><th>חוג לימודים</th><th style="text-align:center">סה"כ סטודנטים</th></tr></thead>
+        <thead><tr><th>חוג לימודים</th><th style="text-align:center">סה"כ סטודנטים</th>${extraTh}</tr></thead>
         <tbody>${rows}</tbody>
       </table>
     </div>`;
@@ -522,9 +532,12 @@ function buildPreview(){
     {n:unassigned.length,       l:'ללא שיבוץ',        red:unassigned.length>0},
   ].map(c=>`<div class="stat-card"><div class="stat-num" style="${c.red?'color:var(--red)':''}">${c.n}</div><div class="stat-lbl">${c.l}</div></div>`).join('');
 
-  /* Department breakdown — full merged DB (existing + new upload) */
+  /* Department breakdown — full merged DB with per-dept new-from-Excel count */
+  const _uploadEmails = new Set(_previewStudents.map(s=>s.e));
   document.getElementById('dept-breakdown').innerHTML =
-    _deptTableHtml(_parsedStudents, `📊 פירוט לפי חוג — סה"כ ב-DB לאחר דחיפה (${_parsedStudents.length} סטודנטים)`);
+    _deptTableHtml(_parsedStudents,
+      `📊 פירוט לפי חוג — סה"כ ב-DB לאחר דחיפה (${_parsedStudents.length} סטודנטים)`,
+      _uploadEmails);
 
   /* Warnings — based on full DB */
   const warns = [];
