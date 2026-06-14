@@ -138,7 +138,6 @@ body{font-family:'Heebo',system-ui,sans-serif;direction:rtl;background:var(--bg)
   <input type="file" id="file-input" accept=".xlsx,.xls" onchange="handleFile(this.files[0])">
 
   <div id="upload-status" style="margin-top:16px;font-size:.85rem;color:var(--muted)"></div>
-  <div id="db-dept-stats" style="margin-top:24px"></div>
 </div>
 
 <!-- ════ SCREEN: PREVIEW ════ -->
@@ -200,7 +199,6 @@ let _currentTab = 'students';
 function showScreen(id){
   document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
   document.getElementById(id).classList.add('active');
-  if(id === 'screen-upload') _loadDbDeptStats();
 }
 
 /* ══ Auth ══ */
@@ -212,7 +210,7 @@ function adminLogin(){
   if(em===ADMIN.e && pw===ADMIN.p){
     document.getElementById('hdr-user').textContent='מנהל מערכת';
     showScreen('screen-upload');
-    fbSignIn(em, pw, ()=>{ _loadDbDeptStats(); }); /* re-load dept stats after auth is ready */
+    fbSignIn(em, pw, ()=>{});
   } else {
     err.classList.add('show');
   }
@@ -295,6 +293,14 @@ function parseBool(v){
   return /^(כן|yes|true|1|TRUE|YES)$/i.test(String(v).trim());
 }
 
+/* Normalize a department name for matching/grouping.
+   Collapses whitespace and unifies the Hebrew engineering prefix
+   (construct "הנדסת" vs absolute "הנדסה" are the same word) so that
+   e.g. "הנדסה תעשייה וניהול" and "הנדסת תעשייה וניהול" match. */
+function _normProg(p){
+  return String(p||'').trim().replace(/\s+/g,' ').replace(/^הנדס[הת]\s+/,'הנדסה ');
+}
+
 function sheetToObjects(sheet, isMentor){
   const rows = XLSX.utils.sheet_to_json(sheet, {header:1, defval:''});
   if(rows.length < 2) return [];
@@ -302,7 +308,7 @@ function sheetToObjects(sheet, isMentor){
   const ci = {};
   for(const [k,aliases] of Object.entries(COL)) ci[k] = findCol(headers, aliases);
 
-  const palette = _PALETTE || ['#3EA9A3','#3B82F6','#8B5CF6','#F59E0B','#EF4444','#10B981','#F97316','#6366F1'];
+  const palette = (typeof _PALETTE !== 'undefined' ? _PALETTE : null) || ['#3EA9A3','#3B82F6','#8B5CF6','#F59E0B','#EF4444','#10B981','#F97316','#6366F1'];
 
   return rows.slice(1).filter(r => r.some(c=>c!=='')).map((r, i) => {
     const get = k => ci[k]>=0 ? String(r[ci[k]]||'').trim() : '';
@@ -371,9 +377,19 @@ function parseWorkbook(wb){
       }
     });
 
-    /* ── Merge students: existing keep their assignments, new ones get matched now ── */
+    /* ── Merge students: existing keep their assignments; fill any missing roles ── */
     const mergedStudents = exStudents.map(s=>({...s}));
     const toMatch = [];
+
+    /* True if the student is still missing any mentor role they're entitled to */
+    function _needsMatch(s){
+      const ms = s.mentors || [];
+      const m  = e => mergedMentors.find(x => x.e === e) || {};
+      const hasFac = ms.some(e => _normProg(m(e).prog) === _normProg(s.prog));
+      const hasAr  = !/ערבית/i.test(s.lang) || ms.some(e => /ערבית/i.test(m(e).lang||''));
+      const hasLd  = !s.ld || ms.some(e => !!m(e).ld);
+      return !hasFac || !hasAr || !hasLd;
+    }
 
     newStudents.forEach(ns => {
       const idx = mergedStudents.findIndex(s => s.e === ns.e);
@@ -386,8 +402,7 @@ function parseWorkbook(wb){
           existing[k] = ns[k];
         });
         existing.mentors = keepMentors;
-        /* Re-match existing students that have no mentor yet */
-        if(!keepMentors.length) toMatch.push(existing);
+        if(_needsMatch(existing)) toMatch.push(existing);
       } else {
         const fresh = {...ns, mentors:[]};
         mergedStudents.push(fresh);
@@ -395,10 +410,14 @@ function parseWorkbook(wb){
       }
     });
 
-    /* ── Match new students against ALL mentors (existing + new from file) ── */
+    /* ── Match/supplement students against ALL mentors ── */
     if(toMatch.length && mergedMentors.length){
+      /* Initialize load from actual current assignments so balancing is accurate */
       const load = {};
-      mergedMentors.forEach(m => { load[m.e] = (m.students||[]).length; });
+      mergedMentors.forEach(m => { load[m.e] = 0; });
+      mergedStudents.forEach(s => {
+        (s.mentors||[]).forEach(e => { if(load[e] !== undefined) load[e]++; });
+      });
       _matchStudents(toMatch, mergedMentors, load);
     }
 
@@ -493,16 +512,17 @@ function runMatching(mentors, students){
 function _deptTableHtml(students, title, newEmails){
   const deptMap = {};
   students.forEach(s=>{
-    const d = s.prog||'לא ידוע';
-    if(!deptMap[d]) deptMap[d] = {total:0, added:0};
-    deptMap[d].total++;
-    if(newEmails && newEmails.has(s.e)) deptMap[d].added++;
+    /* Group by normalized name so spelling variants (הנדסה/הנדסת) count as one */
+    const key = _normProg(s.prog) || 'לא ידוע';
+    if(!deptMap[key]) deptMap[key] = {total:0, added:0, label:(s.prog||'לא ידוע')};
+    deptMap[key].total++;
+    if(newEmails && newEmails.has(s.e)) deptMap[key].added++;
   });
   const hasNew = newEmails && newEmails.size > 0;
   const rows = Object.entries(deptMap)
     .sort((a,b)=>b[1].total-a[1].total)
     .map(([dept,d])=>`<tr>
-      <td><strong>${dept}</strong></td>
+      <td><strong>${d.label}</strong></td>
       <td style="text-align:center">${d.total}</td>
       ${hasNew?`<td style="text-align:center;color:${d.added>0?'#16a34a':'var(--muted)'}">
         ${d.added>0?'+'+d.added:'—'}</td>`:''}
@@ -518,17 +538,6 @@ function _deptTableHtml(students, title, newEmails){
     </div>`;
 }
 
-/* ══ Load existing DB dept stats for the upload screen ══ */
-function _loadDbDeptStats(){
-  const el = document.getElementById('db-dept-stats');
-  if(!el) return;
-  el.innerHTML = '<div style="color:var(--muted);font-size:.83rem">טוען נתוני מסד...</div>';
-  fbLoadDB(result => {
-    const students = (result && result.students) || getStudentsDB() || [];
-    if(!students.length){ el.innerHTML = ''; return; }
-    el.innerHTML = _deptTableHtml(students, `📊 פירוט לפי חוג — מסד קיים (${students.length} סטודנטים)`);
-  });
-}
 
 /* ══ Preview ══ */
 function buildPreview(){
@@ -660,29 +669,50 @@ function pushToFirebase(){
   });
 }
 
-/* Matching helper for new students only (respects existing mentor load) */
+/* ══ Matching algorithm — each student gets up to 3 mentors ══
+     1. Faculty mentor — same חוג  (every student)
+     2. Arabic mentor  — if mother tongue is Arabic
+     3. LD mentor      — if has learning disabilities
+   Each role is filled by a DISTINCT mentor. Only missing roles are added,
+   so re-running on already-assigned students never creates duplicates.
+   Faculty pool includes ALL same-חוג mentors (a mentor who also speaks
+   Arabic can still be a faculty mentor). */
 function _matchStudents(students, allMentors, load){
-  /* Identify specialist mentors — they serve dedicated roles and must NOT
-     occupy a faculty slot, so every Arabic/LD student still gets a separate
-     faculty mentor in addition to their specialist one. */
-  const arMentors = allMentors.filter(m => /ערבית/i.test(m.lang));
-  const ldMentors = allMentors.filter(m => !!m.ld);
-  const specialistSet = new Set([...arMentors, ...ldMentors].map(m => m.e));
-
-  /* Faculty pool: regular mentors only (specialists excluded) */
   const byFaculty = {};
   allMentors.forEach(m => {
-    if(specialistSet.has(m.e)) return;
-    if(!byFaculty[m.prog]) byFaculty[m.prog] = [];
-    byFaculty[m.prog].push(m);
+    const key = _normProg(m.prog);
+    if(!byFaculty[key]) byFaculty[key] = [];
+    byFaculty[key].push(m);
   });
+  const arMentors = allMentors.filter(m => /ערבית/i.test(m.lang));
+  const ldMentors = allMentors.filter(m => !!m.ld);
+  const mentorOf  = e => allMentors.find(m => m.e === e) || {};
 
-  function pick(pool, exc){ const c=pool.filter(m=>!exc.includes(m.e)); if(!c.length)return null; c.sort((a,b)=>(load[a.e]||0)-(load[b.e]||0)); return c[0]; }
-  students.forEach(s=>{
-    const p=pick(byFaculty[s.prog]||[],s.mentors);
-    if(p){s.mentors.push(p.e);load[p.e]=(load[p.e]||0)+1;}
-    if(/ערבית/i.test(s.lang)){const a=pick(arMentors,s.mentors);if(a){s.mentors.push(a.e);load[a.e]=(load[a.e]||0)+1;}}
-    if(s.ld){const l=pick(ldMentors,s.mentors);if(l){s.mentors.push(l.e);load[l.e]=(load[l.e]||0)+1;}}
+  /* Least-loaded mentor from pool, excluding already-assigned emails */
+  function pick(pool, exc){
+    const c = pool.filter(m => !exc.includes(m.e));
+    if(!c.length) return null;
+    c.sort((a,b) => (load[a.e]||0) - (load[b.e]||0));
+    return c[0];
+  }
+
+  students.forEach(s => {
+    /* 1. Faculty — same חוג */
+    const hasFaculty = s.mentors.some(e => _normProg(mentorOf(e).prog) === _normProg(s.prog));
+    if(!hasFaculty){
+      const f = pick(byFaculty[_normProg(s.prog)] || [], s.mentors);
+      if(f){ s.mentors.push(f.e); load[f.e] = (load[f.e]||0) + 1; }
+    }
+    /* 2. Arabic — if Arabic speaker and no Arabic mentor yet */
+    if(/ערבית/i.test(s.lang) && !s.mentors.some(e => /ערבית/i.test(mentorOf(e).lang||''))){
+      const a = pick(arMentors, s.mentors);
+      if(a){ s.mentors.push(a.e); load[a.e] = (load[a.e]||0) + 1; }
+    }
+    /* 3. LD — if learning disabilities and no LD mentor yet */
+    if(s.ld && !s.mentors.some(e => !!mentorOf(e).ld)){
+      const l = pick(ldMentors, s.mentors);
+      if(l){ s.mentors.push(l.e); load[l.e] = (load[l.e]||0) + 1; }
+    }
   });
 }
 </script>
