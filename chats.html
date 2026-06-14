@@ -134,8 +134,10 @@ function renderChats(items){
 
   const sorted=[...items].sort((a,b)=>(b.lastMsgAt||0)-(a.lastMsgAt||0));
   grid.innerHTML=sorted.map(c=>{
-    const ov=c.hoursAgo>=24;
-    const timeLabel=fmtTime(c.hoursAgo);
+    const hoursAgo=c.lastMsgAt?(Date.now()-c.lastMsgAt)/3600000:(c.hoursAgo||0);
+    const hasMsg=!!(c.lastMsgAt||c.hoursAgo);
+    const ov=hasMsg&&hoursAgo>=24;
+    const timeLabel=hasMsg?fmtTime(hoursAgo):'';
     const unrd=c.unread||0;
     const ldBadge=c.ld==='כן'?'<span class="badge" style="background:#fef9c3;color:#92400e">לקויות למידה</span>':'';
     const langBadge=c.lang&&c.lang!=='עברית'?`<span class="badge badge-prog">${x(c.lang)}</span>`:'';

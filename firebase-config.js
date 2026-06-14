@@ -223,12 +223,20 @@ function fbSeedIfEmpty(){
     }
   });
 
-  /* ── faqs / anns: only seed if absent ── */
+  /* ── faqs / anns: seed if absent OR if version is stale ── */
   ['faqs','anns'].forEach(key => {
     FBDB.ref(`${root}/${key}`).once('value', snap => {
-      if(snap.val()){
-        console.log(`[Firebase] ℹ️  "${key}" כבר קיים ב-Firebase — לא מדרס`);
-        return;
+      const raw = snap.val();
+      if(raw){
+        try {
+          const arr = JSON.parse(raw);
+          const ver = key==='anns' ? ANNS_V : FAQS_V;
+          if(arr[0] && (arr[0]._v||0) >= ver){
+            console.log(`[Firebase] ℹ️  "${key}" עדכני (v${arr[0]._v}) — לא מדרס`);
+            return;
+          }
+          console.log(`[Firebase] ♻️  "${key}" מיושן (v${arr[0]&&arr[0]._v||0} < v${ver}) — מעדכן`);
+        } catch(e){}
       }
       const data = getData(key);
       if(data && data.length){

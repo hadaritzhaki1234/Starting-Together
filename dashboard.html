@@ -166,7 +166,9 @@ function renderChats(items){
   if(!items.length){el.innerHTML='<div class="no-results">לא נמצאו סטודנטים</div>';return;}
   const sorted=[...items].sort((a,b)=>(b.lastMsgAt||0)-(a.lastMsgAt||0));
   el.innerHTML=sorted.slice(0,5).map(c=>{
-    const ov=c.hoursAgo>=24;
+    const hoursAgo=c.lastMsgAt?(Date.now()-c.lastMsgAt)/3600000:(c.hoursAgo||0);
+    const hasMsg=!!(c.lastMsgAt||c.hoursAgo);
+    const ov=hasMsg&&hoursAgo>=24;
     const unrd=c.unread||0;
     return`<div class="chat-item" onclick="openChat(${c.id})">
       <div class="chat-top">
@@ -179,7 +181,7 @@ function renderChats(items){
           </div>
           <div class="chat-preview">${x(c.preview)}</div>
         </div>
-        <span class="chat-time ${ov?'overdue':'ok'}">${fmtTime(c.hoursAgo)}</span>
+        <span class="chat-time ${ov?'overdue':'ok'}">${hasMsg?fmtTime(hoursAgo):''}</span>
       </div>
       <button class="btn-chat" onclick="event.stopPropagation();openChat(${c.id})">💬 פתיחת צ׳אט</button>
     </div>`;

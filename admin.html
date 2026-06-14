@@ -211,9 +211,8 @@ function adminLogin(){
   err.classList.remove('show');
   if(em===ADMIN.e && pw===ADMIN.p){
     document.getElementById('hdr-user').textContent='מנהל מערכת';
-    fbSignIn(em, pw, ()=>{}); /* sign into Firebase Auth silently */
     showScreen('screen-upload');
-    _loadDbDeptStats();
+    fbSignIn(em, pw, ()=>{ _loadDbDeptStats(); }); /* re-load dept stats after auth is ready */
   } else {
     err.classList.add('show');
   }
@@ -361,8 +360,15 @@ function parseWorkbook(wb){
     const mergedMentors = exMentors.map(m=>({...m, students:[]}));
     newMentors.forEach(nm => {
       const idx = mergedMentors.findIndex(m => m.e === nm.e);
-      if(idx >= 0) Object.assign(mergedMentors[idx], nm);
-      else mergedMentors.push({...nm, students:[]});
+      if(idx >= 0){
+        /* Preserve existing non-empty string fields (e.g. lang) if new file omits them */
+        Object.keys(nm).forEach(k => {
+          if(typeof nm[k] === 'string' && !nm[k]) return;
+          mergedMentors[idx][k] = nm[k];
+        });
+      } else {
+        mergedMentors.push({...nm, students:[]});
+      }
     });
 
     /* ── Merge students: existing keep their assignments, new ones get matched now ── */
@@ -372,11 +378,16 @@ function parseWorkbook(wb){
     newStudents.forEach(ns => {
       const idx = mergedStudents.findIndex(s => s.e === ns.e);
       if(idx >= 0){
-        const keepMentors = mergedStudents[idx].mentors || [];
-        Object.assign(mergedStudents[idx], ns);
-        mergedStudents[idx].mentors = keepMentors;
+        const existing = mergedStudents[idx];
+        const keepMentors = existing.mentors || [];
+        /* Preserve existing non-empty string fields (e.g. lang, prog) if new file omits them */
+        Object.keys(ns).forEach(k => {
+          if(typeof ns[k] === 'string' && !ns[k]) return;
+          existing[k] = ns[k];
+        });
+        existing.mentors = keepMentors;
         /* Re-match existing students that have no mentor yet */
-        if(!keepMentors.length) toMatch.push(mergedStudents[idx]);
+        if(!keepMentors.length) toMatch.push(existing);
       } else {
         const fresh = {...ns, mentors:[]};
         mergedStudents.push(fresh);
@@ -651,11 +662,22 @@ function pushToFirebase(){
 
 /* Matching helper for new students only (respects existing mentor load) */
 function _matchStudents(students, allMentors, load){
-  const byFaculty={};
-  allMentors.forEach(m=>{ if(!byFaculty[m.prog])byFaculty[m.prog]=[]; byFaculty[m.prog].push(m); });
-  const arMentors=allMentors.filter(m=>/ערבית/i.test(m.lang));
-  const ldMentors=allMentors.filter(m=>m.ld===true);
-  function pick(pool,exc){ const c=pool.filter(m=>!exc.includes(m.e)); if(!c.length)return null; c.sort((a,b)=>(load[a.e]||0)-(load[b.e]||0)); return c[0]; }
+  /* Identify specialist mentors — they serve dedicated roles and must NOT
+     occupy a faculty slot, so every Arabic/LD student still gets a separate
+     faculty mentor in addition to their specialist one. */
+  const arMentors = allMentors.filter(m => /ערבית/i.test(m.lang));
+  const ldMentors = allMentors.filter(m => !!m.ld);
+  const specialistSet = new Set([...arMentors, ...ldMentors].map(m => m.e));
+
+  /* Faculty pool: regular mentors only (specialists excluded) */
+  const byFaculty = {};
+  allMentors.forEach(m => {
+    if(specialistSet.has(m.e)) return;
+    if(!byFaculty[m.prog]) byFaculty[m.prog] = [];
+    byFaculty[m.prog].push(m);
+  });
+
+  function pick(pool, exc){ const c=pool.filter(m=>!exc.includes(m.e)); if(!c.length)return null; c.sort((a,b)=>(load[a.e]||0)-(load[b.e]||0)); return c[0]; }
   students.forEach(s=>{
     const p=pick(byFaculty[s.prog]||[],s.mentors);
     if(p){s.mentors.push(p.e);load[p.e]=(load[p.e]||0)+1;}
