@@ -109,6 +109,9 @@ function _mentorBadge(m){
 /* ── State ── */
 let allFaqs = getData('faqs');
 let allAnns = getData('anns');
+/* Announcements are aggregated across all assigned mentors.
+   annsBySrc maps mentorEmail → that mentor's announcement array. */
+let annsBySrc = {};
 
 /*
   sessions = array of { mentorEmail, mentor, chats, myChat }
@@ -199,12 +202,17 @@ function expandAnn(id){
   if(card){card.classList.remove('ann-card-collapsed');card.classList.add('ann-card-revealed');card.onclick=null;}
   const ann=allAnns.find(a=>a.id===id);
   if(!ann)return;
-  if(!ann.viewedBy)ann.viewedBy=[];
-  if(!ann.viewedBy.includes(U.id)){
-    ann.viewedBy.push(U.id);ann.views=(ann.views||0)+1;
-    /* view counts go to primary mentor namespace */
-    const pe=_primaryEmail();
-    if(pe) fbWritePath(`mty/${fbSanitize(pe)}/anns`, allAnns);
+  /* Record the view on the announcement's OWN mentor namespace */
+  const src=ann._src||_primaryEmail();
+  if(!src)return;
+  const arr=annsBySrc[src]||[];
+  const real=arr.find(a=>a.id===id);
+  if(real){
+    if(!real.viewedBy)real.viewedBy=[];
+    if(!real.viewedBy.includes(U.id)){
+      real.viewedBy.push(U.id);real.views=(real.views||0)+1;
+      fbWritePath(`mty/${fbSanitize(src)}/anns`, arr);
+    }
   }
 }
 function filterAnns(q){
@@ -324,12 +332,32 @@ else {
   });
 }
 
-/* Faqs & anns from primary mentor namespace */
+/* FAQs come from the primary mentor namespace */
 const pe = _primaryEmail();
 if(pe){
   fbSyncPath(`mty/${fbSanitize(pe)}/faqs`, data=>{ if(data){allFaqs=data;renderFaqs(allFaqs);} });
-  fbSyncPath(`mty/${fbSanitize(pe)}/anns`, data=>{ if(data){allAnns=data;renderAnns(allAnns);} });
 }
+
+/* Announcements: aggregate across ALL assigned mentors, so a student sees
+   messages from each mentor assigned to them — and only those. Shared
+   default announcements (same id across namespaces) are collapsed. */
+function _rebuildAnns(){
+  const seen = new Set();
+  const merged = [];
+  mentorEmails.forEach(email=>{
+    (annsBySrc[email]||[]).forEach(a=>{
+      if(seen.has(a.id)) return;   /* collapse duplicate/default announcements */
+      seen.add(a.id);
+      merged.push({...a, _src:email});
+    });
+  });
+  merged.sort((a,b)=>(b.id||0)-(a.id||0));
+  allAnns = merged;
+  renderAnns(allAnns);
+}
+mentorEmails.forEach(email=>{
+  fbSyncPath(`mty/${fbSanitize(email)}/anns`, data=>{ if(data){ annsBySrc[email]=data; _rebuildAnns(); } });
+});
 </script>
 </body>
 </html>

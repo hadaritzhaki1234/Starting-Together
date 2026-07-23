@@ -142,10 +142,23 @@
 const U = requireMentor();
 if(U){ populateHeader(); fbSeedIfEmpty(); }
 
-// Student count badge (inline in header)
+// Student count badge (inline in header) — quick value from cache…
 if(U){
   const cnt=getMentorStudentCount();
   document.getElementById('student-badge').textContent=`👥 ${cnt} סטודנטים`;
+}
+// …then refresh from the live DB so re-uploads reflect immediately (cache can be stale)
+if(U && typeof fbLoadDB==='function'){
+  fbLoadDB(res=>{
+    if(!res||!res.mentors)return;
+    const fresh=res.mentors.find(m=>m.e===U.e);
+    if(fresh&&Array.isArray(fresh.students)){
+      U.students=fresh.students;
+      try{ localStorage.setItem('currentUser',JSON.stringify(U)); }catch(e){}
+      const badge=document.getElementById('student-badge');
+      if(badge) badge.textContent=`👥 ${fresh.students.length} סטודנטים`;
+    }
+  });
 }
 
 let allChats = [];
@@ -361,9 +374,8 @@ fbListen('chats', updated=>{
   allChats=updated;
   renderChats(allChats);
   _updateNotifDot();
-  /* Update student count badge */
-  const badge=document.getElementById('student-badge');
-  if(badge&&allChats.length) badge.textContent=`👥 ${allChats.length} סטודנטים`;
+  /* Note: the student-count badge is driven by the live DB (fbLoadDB above),
+     not by allChats.length, so it stays accurate after re-uploads. */
   if(openChatId){const c=allChats.find(i=>String(i.id)===String(openChatId));if(c)renderMsgs(c);}
 });
 </script>

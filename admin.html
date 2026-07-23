@@ -149,11 +149,6 @@ body{font-family:'Heebo',system-ui,sans-serif;direction:rtl;background:var(--bg)
   <div id="warnings-box"></div>
   <div id="dept-breakdown"></div>
 
-  <div class="tab-btns">
-    <button class="tab-btn active" onclick="showTab('students')">סטודנטים</button>
-    <button class="tab-btn" onclick="showTab('mentors')">חונכים</button>
-  </div>
-
   <div class="table-wrap">
     <table class="data-table" id="preview-table"><thead></thead><tbody></tbody></table>
   </div>
@@ -161,7 +156,7 @@ body{font-family:'Heebo',system-ui,sans-serif;direction:rtl;background:var(--bg)
   <div class="actions-row">
     <button class="btn-back" onclick="goBack()">← חזרה</button>
     <button class="btn-push" id="push-btn" onclick="pushToFirebase()">
-      🚀 דחיפת נתונים למסד הנתונים
+      🚀 קליטת נתונים
     </button>
   </div>
 </div>
@@ -170,9 +165,9 @@ body{font-family:'Heebo',system-ui,sans-serif;direction:rtl;background:var(--bg)
 <div class="screen" id="screen-success">
   <div class="success-card">
     <div class="success-icon">✅</div>
-    <div class="success-title">הנתונים נדחפו בהצלחה!</div>
+    <div class="success-title">הנתונים נקלטו בהצלחה!</div>
     <div class="success-sub" id="success-sub"></div>
-    <button class="btn-again" onclick="showScreen('screen-upload')">העלאה נוספת</button>
+    <button class="btn-again" onclick="window.location.href='index.html'">חזרה לדף הבית</button>
   </div>
 </div>
 
@@ -550,7 +545,7 @@ function buildPreview(){
   const got3   = _previewStudents.filter(s=>s.mentors.length===3);
 
   document.getElementById('stats-bar').innerHTML = [
-    {n:_parsedStudents.length,  l:'סטודנטים ב-DB',   red:false},
+    {n:_parsedStudents.length,  l:'סטודנטים במאגר',  red:false},
     {n:_previewStudents.length, l:'סטודנטים חדשים',  red:false},
     {n:unassigned.length,       l:'ללא שיבוץ',        red:unassigned.length>0},
   ].map(c=>`<div class="stat-card"><div class="stat-num" style="${c.red?'color:var(--red)':''}">${c.n}</div><div class="stat-lbl">${c.l}</div></div>`).join('');
@@ -559,7 +554,7 @@ function buildPreview(){
   const _uploadEmails = new Set(_previewStudents.map(s=>s.e));
   document.getElementById('dept-breakdown').innerHTML =
     _deptTableHtml(_parsedStudents,
-      `📊 פירוט לפי חוג — סה"כ ב-DB לאחר דחיפה (${_parsedStudents.length} סטודנטים)`,
+      `📊 פירוט לפי חוג — סה"כ במאגר לאחר קליטה (${_parsedStudents.length} סטודנטים)`,
       _uploadEmails);
 
   /* Warnings — based on full DB */
@@ -567,17 +562,16 @@ function buildPreview(){
   if(unassigned.length) warns.push(`${unassigned.length} סטודנטים ללא חונך ראשי — ייתכן שאין חונך עם אותו חוג לימודים`);
   if(mentorsNoStudents.length) warns.push(`${mentorsNoStudents.length} חונכים ללא סטודנטים משובצים`);
   if(needAr.length && arabicMentorsCount()===0) warns.push('אין חונכים דוברי ערבית — סטודנטים ערביים לא שובצו לחונך שפה');
-  if(needLd.length && ldMentorsCount()===0) warns.push('אין חונכים לקויות למידה — סטודנטים עם ל"ל לא שובצו לחונך מתמחה');
+  if(needLd.length && ldMentorsCount()===0) warns.push('אין חונכים לקויות למידה — סטודנטים עם לקויות לא שובצו לחונך מתמחה');
 
   const wb = document.getElementById('warnings-box');
   wb.innerHTML = warns.length ? `<div class="warning-box">⚠️ <strong>שים לב:</strong><ul>${warns.map(w=>`<li>${w}</li>`).join('')}</ul></div>` : '';
 
   const now = new Date().toLocaleDateString('he-IL',{day:'numeric',month:'long',year:'numeric'});
-  const previewNote = `מציג ${_previewStudents.length} סטודנטים ו-${_previewMentors.length} חונכים מהקובץ שהועלה · ${now}`;
+  const previewNote = `מציג ${_previewStudents.length} סטודנטים מהקובץ שהועלה · ${now}`;
   document.getElementById('preview-sub').textContent = previewNote;
 
   _currentTab = 'students';
-  document.querySelectorAll('.tab-btn').forEach((b,i)=>b.classList.toggle('active',i===0));
   renderTable('students');
 }
 
@@ -599,7 +593,7 @@ function _mentorChip(email){
   const isAr = m && /ערבית/i.test(m.lang);
   const isLd = m && m.ld;
   const cls  = isAr ? 'arabic' : isLd ? 'ld' : '';
-  const suffix = isAr?' (ערבית)': isLd?' (ל"ל)':'';
+  const suffix = isAr?' (ערבית)': isLd?' (לקויות)':'';
   return `<span class="mentor-chip ${cls}">${name}${suffix}</span>`;
 }
 
@@ -609,7 +603,7 @@ function renderTable(tab){
   if(tab === 'students'){
     const rows = _previewStudents;
     tbl.querySelector('thead').innerHTML = `<tr>
-      <th>שם</th><th>חוג לימודים</th><th>שפת אם</th><th>ל"ל</th><th>שנה</th><th>חונכים משובצים</th>
+      <th>שם</th><th>חוג לימודים</th><th>שפת אם</th><th>לקויות</th><th>שנה</th><th>חונכים משובצים</th>
     </tr>`;
     tbl.querySelector('tbody').innerHTML = rows.length
       ? rows.map(s=>`<tr>
@@ -624,7 +618,7 @@ function renderTable(tab){
   } else {
     const rows = _previewMentors;
     tbl.querySelector('thead').innerHTML = `<tr>
-      <th>שם</th><th>חוג לימודים</th><th>שפת אם</th><th>ל"ל</th><th>שנה</th><th>מספר סטודנטים</th>
+      <th>שם</th><th>חוג לימודים</th><th>שפת אם</th><th>לקויות</th><th>שנה</th><th>מספר סטודנטים</th>
     </tr>`;
     tbl.querySelector('tbody').innerHTML = rows.length
       ? rows.map(m=>`<tr>
@@ -649,7 +643,7 @@ function goBack(){
 function pushToFirebase(){
   const btn = document.getElementById('push-btn');
   btn.disabled = true;
-  btn.innerHTML = '⏳ דוחף… <span class="spinner"></span>';
+  btn.innerHTML = '⏳ קולט… <span class="spinner"></span>';
 
   const mentors  = _parsedMentors.map(({_mentorRoles,...r})=>r);
   const students = _parsedStudents.map(({_mentorRoles,...r})=>r);
@@ -659,11 +653,12 @@ function pushToFirebase(){
       localStorage.setItem('_dyn_mentors',  JSON.stringify(mentors));
       localStorage.setItem('_dyn_students', JSON.stringify(students));
       document.getElementById('success-sub').textContent =
-        `סה"כ ${mentors.length} חונכים ו-${students.length} סטודנטים במסד הנתונים. המשתמשים יוכלו להתחבר מיד.`;
+        `סה"כ ${mentors.length} חונכים ו-${students.length} סטודנטים במסד הנתונים. מעבר לדף הבית…`;
       showScreen('screen-success');
+      setTimeout(() => { window.location.href = 'index.html'; }, 1800);
     } else {
       btn.disabled = false;
-      btn.innerHTML = '🚀 דחיפת נתונים למסד הנתונים';
+      btn.innerHTML = '🚀 קליטת נתונים';
       alert(`שגיאה:\n${errMsg || 'שגיאה לא ידועה'}\n\nוודא שה-Rules מאפשרים כתיבה.`);
     }
   });
